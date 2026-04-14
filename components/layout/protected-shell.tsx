@@ -14,12 +14,12 @@ export default function ProtectedShell({ children }: Props) {
       <ProtectedSidebar />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <ProtectedTopbar />
+        <div className="relative z-40 shrink-0">
+          <ProtectedTopbar />
+        </div>
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-7xl px-6 py-6">
-            {children}
-          </div>
+        <main className="relative z-0 flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-7xl px-7 py-7">{children}</div>
         </main>
       </div>
     </div>

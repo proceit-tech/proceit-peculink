@@ -29,13 +29,13 @@ export default function ProtectedTopbar() {
   }, []);
 
   return (
-    <header className="border-b border-white/10 bg-[rgba(5,7,10,0.72)] backdrop-blur-xl">
-      <div className="mx-auto flex h-[68px] max-w-7xl items-center justify-end px-6">
-        <div className="relative" ref={dropdownRef}>
+    <header className="relative border-b border-white/10 bg-[rgba(5,7,10,0.78)] backdrop-blur-xl">
+      <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-end px-7">
+        <div className="relative z-50" ref={dropdownRef}>
           <button
             type="button"
             onClick={() => setOpen((prev) => !prev)}
-            className="group flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 transition hover:border-white/15 hover:bg-white/[0.06]"
+            className="group flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition hover:border-white/15 hover:bg-white/[0.06]"
           >
             <span className="max-w-[220px] truncate text-sm font-semibold text-white">
               {session?.company ?? "PecuLink Platform"}
@@ -43,7 +43,7 @@ export default function ProtectedTopbar() {
 
             <svg
               className={[
-                "h-4 w-4 text-white/45 transition-transform duration-200",
+                "h-4 w-4 text-white/40 transition-transform duration-200",
                 open ? "rotate-180" : "",
               ].join(" ")}
               viewBox="0 0 20 20"
@@ -62,7 +62,7 @@ export default function ProtectedTopbar() {
           </button>
 
           {open ? (
-            <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[220px] overflow-hidden rounded-xl border border-white/10 bg-[#0B1015] shadow-[0_18px_50px_rgba(0,0,0,0.4)]">
+            <div className="absolute right-0 top-[calc(100%+10px)] z-[100] w-[224px] overflow-hidden rounded-2xl border border-white/10 bg-[#0B1015] shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
               <div className="border-b border-white/8 px-4 py-3">
                 <p className="truncate text-sm font-semibold text-white">
                   {session?.company ?? "PecuLink Platform"}
@@ -74,14 +74,14 @@ export default function ProtectedTopbar() {
 
               <button
                 type="button"
-                className="flex w-full items-center px-4 py-3 text-left text-sm font-medium text-white/75 transition hover:bg-white/[0.05] hover:text-white"
+                className="flex w-full items-center px-4 py-3 text-left text-sm font-medium text-white/72 transition hover:bg-white/[0.05] hover:text-white"
               >
                 Perfil
               </button>
 
               <button
                 type="button"
-                className="flex w-full items-center px-4 py-3 text-left text-sm font-medium text-white/75 transition hover:bg-white/[0.05] hover:text-white"
+                className="flex w-full items-center px-4 py-3 text-left text-sm font-medium text-white/72 transition hover:bg-white/[0.05] hover:text-white"
               >
                 Plan
               </button>
