@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getMockSession } from "@/lib/mock/session";
@@ -12,6 +13,11 @@ import {
   type OperationRecord,
 } from "@/lib/mock/operations";
 import { getRequestById } from "@/lib/mock/relations";
+import {
+  getLivestockLabel,
+  getPriorityLabel,
+  getRequestStatusLabel,
+} from "@/lib/mock/requests";
 
 type ViewFilter = "all" | "active" | "attention" | "completed" | "logistics_gap";
 
@@ -54,6 +60,24 @@ const ROLE_COPY: Record<
   },
 };
 
+const PRIORITY_WEIGHT: Record<OperationRecord["priority"], number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  normal: 1,
+};
+
+const STATUS_WEIGHT: Record<OperationRecord["status"], number> = {
+  created: 1,
+  commercial_confirmed: 2,
+  awaiting_logistics: 3,
+  scheduled: 4,
+  in_transit: 5,
+  received: 6,
+  completed: 7,
+  cancelled: 0,
+};
+
 function normalizeRole(role: unknown): UserRole {
   if (role === "admin") return "admin";
   if (role === "frigorifico") return "frigorifico";
@@ -64,6 +88,7 @@ function normalizeRole(role: unknown): UserRole {
 
 function getCompanySlug(company?: string) {
   if (!company) return "";
+
   return company
     .toLowerCase()
     .normalize("NFD")
@@ -103,9 +128,14 @@ function matchesFilter(item: OperationRecord, filter: ViewFilter) {
   if (filter === "all") return true;
 
   if (filter === "active") {
-    return ["created", "commercial_confirmed", "awaiting_logistics", "scheduled", "in_transit", "received"].includes(
-      item.status
-    );
+    return [
+      "created",
+      "commercial_confirmed",
+      "awaiting_logistics",
+      "scheduled",
+      "in_transit",
+      "received",
+    ].includes(item.status);
   }
 
   if (filter === "attention") {
@@ -166,7 +196,9 @@ function getPriorityTone(priority: OperationRecord["priority"]) {
 
 function buildSummary(items: OperationRecord[], role: UserRole) {
   const total = items.length;
-  const active = items.filter((item) => item.status !== "completed" && item.status !== "cancelled").length;
+  const active = items.filter(
+    (item) => item.status !== "completed" && item.status !== "cancelled"
+  ).length;
   const completed = items.filter((item) => item.status === "completed").length;
   const totalValue = items.reduce((acc, item) => acc + item.totalOperationValue, 0);
   const logisticsGap = items.filter(
@@ -209,7 +241,7 @@ function buildSummary(items: OperationRecord[], role: UserRole) {
 }
 
 function buildAction(role: UserRole, item: OperationRecord) {
-  if (role === "admin") return "Ver detalle";
+  if (role === "admin") return "Ver request";
 
   if (role === "frigorifico") {
     if (item.status === "created") return "Consolidar operación";
@@ -234,6 +266,16 @@ function buildAction(role: UserRole, item: OperationRecord) {
   return "Abrir";
 }
 
+function buildSortScore(item: OperationRecord) {
+  const priorityScore = PRIORITY_WEIGHT[item.priority] * 1000;
+  const statusScore = STATUS_WEIGHT[item.status] * 140;
+  const overallPenalty = 100 - Math.min(item.overallProgress, 100);
+  const logisticsPenalty = 100 - Math.min(item.logisticsProgress, 100);
+  const compliancePenalty = 100 - Math.min(item.compliancePercent, 100);
+
+  return priorityScore + statusScore + overallPenalty + logisticsPenalty + compliancePenalty;
+}
+
 function OperationsPageContent() {
   const session = getMockSession();
   const role = normalizeRole(session?.role);
@@ -255,10 +297,7 @@ function OperationsPageContent() {
 
     return base
       .filter((item) => matchesFilter(item, view))
-      .sort((a, b) => {
-        const priorityWeight = { critical: 4, high: 3, medium: 2, normal: 1 };
-        return priorityWeight[b.priority] - priorityWeight[a.priority];
-      });
+      .sort((a, b) => buildSortScore(b) - buildSortScore(a));
   }, [role, session?.company, view, requestId]);
 
   const summary = useMemo(() => buildSummary(visibleOperations, role), [visibleOperations, role]);
@@ -266,59 +305,120 @@ function OperationsPageContent() {
   return (
     <section className="space-y-6 text-white">
       {request ? (
-        <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
-            Contexto
-          </p>
-          <h3 className="mt-2 text-lg font-semibold text-white">
-            {request.id} · {request.frigorifico}
-          </h3>
-          <p className="mt-1 text-sm text-white/60">
-            {request.origin} → {request.destination} · {request.quantity.toLocaleString()}{" "}
-            {request.unit}
-          </p>
+        <div className="overflow-hidden rounded-[26px] border border-cyan-400/20 bg-cyan-400/[0.06]">
+          <div className="h-px bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent" />
+
+          <div className="px-6 py-5">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+              <div className="max-w-4xl">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-300/90">
+                  Contexto activo
+                </p>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/requests/${request.id}`}
+                    className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100 transition hover:bg-cyan-400/15"
+                  >
+                    {request.id}
+                  </Link>
+
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/72">
+                    {getRequestStatusLabel(request.status)}
+                  </span>
+
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/72">
+                    {getPriorityLabel(request.priority)}
+                  </span>
+                </div>
+
+                <Link href={`/requests/${request.id}`} className="group block">
+                  <h3 className="mt-4 text-[24px] font-semibold tracking-[-0.03em] text-white transition group-hover:text-cyan-200">
+                    {request.frigorifico}
+                  </h3>
+                </Link>
+
+                <p className="mt-2 text-sm leading-7 text-white/62">
+                  {getLivestockLabel(request.type)} · {request.origin} → {request.destination} ·{" "}
+                  {request.quantity.toLocaleString()} {request.unit}
+                </p>
+
+                <p className="mt-2 text-sm leading-7 text-white/50">
+                  Esta vista está filtrada por la solicitud seleccionada, permitiendo analizar la
+                  consolidación final entre capa comercial y capa logística.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href={`/requests/${request.id}`}
+                  className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  Ver request
+                </Link>
+
+                <Link
+                  href={`/offers?requestId=${request.id}`}
+                  className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  Ver offers
+                </Link>
+
+                <Link
+                  href={`/freight?requestId=${request.id}`}
+                  className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  Ver freight
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
 
-      <div className="rounded-[26px] border border-white/10 bg-white/[0.03] px-6 py-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-4xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-400/80">
-              {copy.kicker}
-            </p>
-            <h1 className="mt-2 text-[32px] font-semibold tracking-[-0.04em] text-white">
-              {copy.title}
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/58">
-              {copy.description}
-            </p>
-          </div>
+      <div className="overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.03]">
+        <div className="h-px bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent" />
 
-          <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1">
-            {[
-              { key: "all", label: "Todas" },
-              { key: "active", label: "Activas" },
-              { key: "attention", label: "Atención" },
-              { key: "completed", label: "Completadas" },
-              { key: "logistics_gap", label: "Gap logístico" },
-            ].map((item) => {
-              const active = item.key === view;
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setView(item.key as ViewFilter)}
-                  className={[
-                    "rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-all duration-200",
-                    active
-                      ? "bg-cyan-400/10 text-cyan-100"
-                      : "text-white/45 hover:text-white/80",
-                  ].join(" ")}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
+        <div className="px-6 py-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-4xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-400/80">
+                {copy.kicker}
+              </p>
+              <h1 className="mt-2 text-[32px] font-semibold tracking-[-0.04em] text-white">
+                {copy.title}
+              </h1>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-white/58">
+                {copy.description}
+              </p>
+            </div>
+
+            <div className="inline-flex flex-wrap rounded-full border border-white/10 bg-white/[0.03] p-1">
+              {[
+                { key: "all", label: "Todas" },
+                { key: "active", label: "Activas" },
+                { key: "attention", label: "Atención" },
+                { key: "completed", label: "Completadas" },
+                { key: "logistics_gap", label: "Gap logístico" },
+              ].map((item) => {
+                const active = item.key === view;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setView(item.key as ViewFilter)}
+                    className={[
+                      "rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-all duration-200",
+                      active
+                        ? "bg-cyan-400/10 text-cyan-100"
+                        : "text-white/45 hover:text-white/80",
+                    ].join(" ")}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -345,172 +445,258 @@ function OperationsPageContent() {
             <p className="text-sm leading-7 text-white/58">{copy.empty}</p>
           </div>
         ) : (
-          visibleOperations.map((item) => (
-            <article
-              key={item.id}
-              className="overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.03]"
-            >
-              <div className="border-b border-white/8 px-6 py-5">
-                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/72">
-                        {item.id}
+          visibleOperations.map((item) => {
+            const linkedRequest = getRequestById(item.requestId);
+
+            return (
+              <article
+                key={item.id}
+                className="overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.03]"
+              >
+                <div className="border-b border-white/8 px-6 py-5">
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/72">
+                          {item.id}
+                        </span>
+
+                        <span
+                          className={[
+                            "rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
+                            getStatusTone(item.status),
+                          ].join(" ")}
+                        >
+                          {getOperationStatusLabel(item.status)}
+                        </span>
+
+                        <span
+                          className={[
+                            "rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
+                            getPriorityTone(item.priority),
+                          ].join(" ")}
+                        >
+                          {getOperationPriorityLabel(item.priority)}
+                        </span>
+                      </div>
+
+                      <h3 className="mt-4 text-[22px] font-semibold tracking-[-0.03em] text-white">
+                        {item.frigorifico}
+                      </h3>
+
+                      <p className="mt-2 text-sm leading-7 text-white/58">
+                        {item.origin} → {item.destination} · {item.quantity.toLocaleString()}{" "}
+                        {item.unit}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 xl:justify-end">
+                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">
+                        Entrega {item.deliveryDate ?? "pendiente"}
                       </span>
 
-                      <span
-                        className={[
-                          "rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
-                          getStatusTone(item.status),
-                        ].join(" ")}
+                      <Link
+                        href={`/requests/${item.requestId}`}
+                        className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/78 transition hover:bg-white/[0.07] hover:text-white"
                       >
-                        {getOperationStatusLabel(item.status)}
-                      </span>
+                        {buildAction(role, item)}
+                      </Link>
+                    </div>
+                  </div>
+                </div>
 
-                      <span
-                        className={[
-                          "rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
-                          getPriorityTone(item.priority),
-                        ].join(" ")}
+                <div className="grid gap-5 px-6 py-6 xl:grid-cols-[1.2fr_0.8fr]">
+                  <div className="space-y-5">
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      <article className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                          Progreso total
+                        </p>
+                        <p className="mt-3 text-[22px] font-semibold text-white">
+                          {item.overallProgress}%
+                        </p>
+                        <p className="mt-2 text-xs text-white/45">{getOperationGapLabel(item)}</p>
+                      </article>
+
+                      <article className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                          Comercial
+                        </p>
+                        <p className="mt-3 text-[22px] font-semibold text-white">
+                          {item.commercialProgress}%
+                        </p>
+                        <p className="mt-2 text-xs text-white/45">Madurez comercial</p>
+                      </article>
+
+                      <article className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                          Logística
+                        </p>
+                        <p className="mt-3 text-[22px] font-semibold text-white">
+                          {item.logisticsProgress}%
+                        </p>
+                        <p className="mt-2 text-xs text-white/45">Ejecución logística</p>
+                      </article>
+
+                      <article className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                          Cumplimiento
+                        </p>
+                        <p className="mt-3 text-[22px] font-semibold text-white">
+                          {item.compliancePercent}%
+                        </p>
+                        <p className="mt-2 text-xs text-white/45">Indicador operativo</p>
+                      </article>
+                    </div>
+
+                    <div className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
+                      <div className="mb-2 flex items-center justify-between text-sm">
+                        <span className="text-white/60">Progreso general de operación</span>
+                        <span className="font-semibold text-white">{item.overallProgress}%</span>
+                      </div>
+
+                      <div className="h-3 overflow-hidden rounded-full bg-white/8">
+                        <div
+                          className="h-full rounded-full bg-cyan-400"
+                          style={{ width: `${item.overallProgress}%` }}
+                        />
+                      </div>
+
+                      <div className="mt-3 grid gap-3 text-xs text-white/42 md:grid-cols-3">
+                        <span>Creada {item.createdAt}</span>
+                        <span>Retiro {item.pickupDate ?? "pendiente"}</span>
+                        <span>Entrega {item.deliveryDate ?? "pendiente"}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <Link
+                        href={`/requests/${item.requestId}`}
+                        className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 transition hover:bg-white/[0.05]"
                       >
-                        {getOperationPriorityLabel(item.priority)}
-                      </span>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                          Request asociada
+                        </p>
+                        <p className="mt-3 text-[18px] font-semibold text-white">
+                          {linkedRequest ? linkedRequest.id : item.requestId}
+                        </p>
+                        <p className="mt-2 text-xs text-white/45">
+                          Abrir detalle completo del ciclo
+                        </p>
+                      </Link>
+
+                      <Link
+                        href={`/offers?requestId=${item.requestId}`}
+                        className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 transition hover:bg-white/[0.05]"
+                      >
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                          Capa comercial
+                        </p>
+                        <p className="mt-3 text-[18px] font-semibold text-white">
+                          {item.supplyOfferId ? item.supplyOfferId : "Sin offer"}
+                        </p>
+                        <p className="mt-2 text-xs text-white/45">
+                          Ver offers vinculadas a esta operación
+                        </p>
+                      </Link>
+
+                      <Link
+                        href={`/freight?requestId=${item.requestId}`}
+                        className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 transition hover:bg-white/[0.05]"
+                      >
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                          Capa logística
+                        </p>
+                        <p className="mt-3 text-[18px] font-semibold text-white">
+                          {item.freightId ? item.freightId : "Sin freight"}
+                        </p>
+                        <p className="mt-2 text-xs text-white/45">
+                          Ver bloque logístico de esta operación
+                        </p>
+                      </Link>
                     </div>
-
-                    <h3 className="mt-4 text-[22px] font-semibold tracking-[-0.03em] text-white">
-                      {item.frigorifico}
-                    </h3>
-
-                    <p className="mt-2 text-sm leading-7 text-white/58">
-                      {item.origin} → {item.destination} · {item.quantity.toLocaleString()} {item.unit}
-                    </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3 xl:justify-end">
-                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">
-                      Entrega {item.deliveryDate ?? "pendiente"}
-                    </span>
+                  <div className="space-y-4">
+                    <article className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                        Valor económico
+                      </p>
+                      <p className="mt-3 text-[24px] font-semibold tracking-[-0.03em] text-white">
+                        USD {item.totalOperationValue.toLocaleString()}
+                      </p>
+                      <div className="mt-3 space-y-2 text-sm text-white/52">
+                        <p>Comercial: USD {item.commercialValue.toLocaleString()}</p>
+                        <p>Logística: USD {(item.freightValue ?? 0).toLocaleString()}</p>
+                        <p>
+                          Margen estimado:{" "}
+                          {item.marginEstimate ? `${item.marginEstimate}%` : "—"}
+                        </p>
+                      </div>
+                    </article>
 
-                    <button
-                      type="button"
-                      className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/78 transition hover:bg-white/[0.07] hover:text-white"
-                    >
-                      {buildAction(role, item)}
-                    </button>
+                    <article className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                        Participantes
+                      </p>
+                      <div className="mt-4 space-y-3 text-sm text-white/58">
+                        <p>
+                          <span className="font-medium text-white/82">Frigorífico:</span>{" "}
+                          {item.frigorifico}
+                        </p>
+                        <p>
+                          <span className="font-medium text-white/82">Proveedor:</span>{" "}
+                          {item.supplierName}
+                        </p>
+                        <p>
+                          <span className="font-medium text-white/82">Transportista:</span>{" "}
+                          {item.transportista ?? "Sin asignar"}
+                        </p>
+                      </div>
+                    </article>
+
+                    <article className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                        Contexto de la request
+                      </p>
+                      <div className="mt-4 space-y-3 text-sm text-white/58">
+                        <p>
+                          <span className="font-medium text-white/82">Solicitud:</span>{" "}
+                          {linkedRequest ? linkedRequest.id : item.requestId}
+                        </p>
+                        <p>
+                          <span className="font-medium text-white/82">Estado:</span>{" "}
+                          {linkedRequest
+                            ? getRequestStatusLabel(linkedRequest.status)
+                            : "No disponible"}
+                        </p>
+                        <p>
+                          <span className="font-medium text-white/82">Prioridad:</span>{" "}
+                          {linkedRequest
+                            ? getPriorityLabel(linkedRequest.priority)
+                            : "No disponible"}
+                        </p>
+                        <p>
+                          <span className="font-medium text-white/82">Tipo:</span>{" "}
+                          {linkedRequest ? getLivestockLabel(linkedRequest.type) : "No disponible"}
+                        </p>
+                      </div>
+                    </article>
+
+                    <article className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                        Nota operativa
+                      </p>
+                      <p className="mt-3 text-sm leading-7 text-white/58">
+                        {item.notes ??
+                          "Sin observaciones registradas. Esta operación debe leerse como consolidación final entre request, oferta adjudicada y bloque logístico asociado."}
+                      </p>
+                    </article>
                   </div>
                 </div>
-              </div>
-
-              <div className="grid gap-5 px-6 py-6 xl:grid-cols-[1.2fr_0.8fr]">
-                <div className="space-y-5">
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <article className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
-                        Progreso total
-                      </p>
-                      <p className="mt-3 text-[22px] font-semibold text-white">
-                        {item.overallProgress}%
-                      </p>
-                      <p className="mt-2 text-xs text-white/45">{getOperationGapLabel(item)}</p>
-                    </article>
-
-                    <article className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
-                        Comercial
-                      </p>
-                      <p className="mt-3 text-[22px] font-semibold text-white">
-                        {item.commercialProgress}%
-                      </p>
-                      <p className="mt-2 text-xs text-white/45">Madurez comercial</p>
-                    </article>
-
-                    <article className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
-                        Logística
-                      </p>
-                      <p className="mt-3 text-[22px] font-semibold text-white">
-                        {item.logisticsProgress}%
-                      </p>
-                      <p className="mt-2 text-xs text-white/45">Ejecución logística</p>
-                    </article>
-
-                    <article className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
-                        Cumplimiento
-                      </p>
-                      <p className="mt-3 text-[22px] font-semibold text-white">
-                        {item.compliancePercent}%
-                      </p>
-                      <p className="mt-2 text-xs text-white/45">Indicador operativo</p>
-                    </article>
-                  </div>
-
-                  <div className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
-                    <div className="mb-2 flex items-center justify-between text-sm">
-                      <span className="text-white/60">Progreso general de operación</span>
-                      <span className="font-semibold text-white">{item.overallProgress}%</span>
-                    </div>
-
-                    <div className="h-3 overflow-hidden rounded-full bg-white/8">
-                      <div
-                        className="h-full rounded-full bg-cyan-400"
-                        style={{ width: `${item.overallProgress}%` }}
-                      />
-                    </div>
-
-                    <div className="mt-3 grid gap-3 md:grid-cols-3 text-xs text-white/42">
-                      <span>Creada {item.createdAt}</span>
-                      <span>Retiro {item.pickupDate ?? "pendiente"}</span>
-                      <span>Entrega {item.deliveryDate ?? "pendiente"}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <article className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
-                      Valor económico
-                    </p>
-                    <p className="mt-3 text-[24px] font-semibold tracking-[-0.03em] text-white">
-                      USD {item.totalOperationValue.toLocaleString()}
-                    </p>
-                    <div className="mt-3 space-y-2 text-sm text-white/52">
-                      <p>Comercial: USD {item.commercialValue.toLocaleString()}</p>
-                      <p>Logística: USD {(item.freightValue ?? 0).toLocaleString()}</p>
-                      <p>Margen estimado: {item.marginEstimate ? `${item.marginEstimate}%` : "—"}</p>
-                    </div>
-                  </article>
-
-                  <article className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
-                      Participantes
-                    </p>
-                    <div className="mt-4 space-y-3 text-sm text-white/58">
-                      <p>
-                        <span className="font-medium text-white/82">Frigorífico:</span> {item.frigorifico}
-                      </p>
-                      <p>
-                        <span className="font-medium text-white/82">Proveedor:</span> {item.supplierName}
-                      </p>
-                      <p>
-                        <span className="font-medium text-white/82">Transportista:</span>{" "}
-                        {item.transportista ?? "Sin asignar"}
-                      </p>
-                    </div>
-                  </article>
-
-                  <article className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
-                      Nota operativa
-                    </p>
-                    <p className="mt-3 text-sm leading-7 text-white/58">
-                      {item.notes ?? "Sin observaciones registradas."}
-                    </p>
-                  </article>
-                </div>
-              </div>
-            </article>
-          ))
+              </article>
+            );
+          })
         )}
       </div>
     </section>

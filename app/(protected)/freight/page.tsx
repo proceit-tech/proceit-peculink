@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getMockSession } from "@/lib/mock/session";
@@ -14,10 +15,12 @@ import {
   getVehicleTypeLabel,
   type FreightRecord,
 } from "@/lib/mock/freight";
+import { getOperationByRequestId, getRequestById } from "@/lib/mock/relations";
 import {
-  getOperationByRequestId,
-  getRequestById,
-} from "@/lib/mock/relations";
+  getLivestockLabel,
+  getPriorityLabel,
+  getRequestStatusLabel,
+} from "@/lib/mock/requests";
 
 type ViewFilter = "all" | "open" | "attention" | "assigned" | "completed";
 
@@ -34,30 +37,49 @@ const ROLE_COPY: Record<
     kicker: "Transporte",
     title: "Control global de ejecución logística",
     description:
-      "Vista ejecutiva de toda la capa logística del marketplace, con foco en asignación, cumplimiento, cobertura y capacidad operativa.",
+      "Vista ejecutiva de toda la capa logística del marketplace, con foco en asignación, cumplimiento, cobertura, capacidad operativa y conexión con la operación consolidada.",
     empty: "No hay registros logísticos visibles para administración.",
   },
   frigorifico: {
     kicker: "Mi logística",
     title: "Control de transporte sobre tus operaciones",
     description:
-      "Seguimiento de cargas vinculadas a tus solicitudes, con foco en propuesta, asignación, programación y cumplimiento de entrega.",
+      "Seguimiento completo de cargas vinculadas a tus solicitudes, con foco en propuesta, asignación, programación, cumplimiento y visibilidad de ejecución.",
     empty: "No hay operaciones logísticas visibles para este frigorífico.",
   },
   productor: {
     kicker: "Seguimiento logístico",
     title: "Visibilidad de transporte sobre operaciones adjudicadas",
     description:
-      "Lectura de la capa logística asociada a tus operaciones, para validar avance, asignación y nivel de cumplimiento.",
+      "Lectura de la capa logística asociada a tus operaciones, para validar asignación, avance de viaje, cumplimiento y cierre.",
     empty: "No hay registros logísticos visibles para este productor.",
   },
   transportista: {
     kicker: "Mis cargas",
     title: "Gestión operativa de propuestas y viajes",
     description:
-      "Control de cargas visibles, asignadas y ejecutadas por tu operación logística, con foco en ocupación, agenda y cumplimiento.",
+      "Control de cargas visibles, asignadas y ejecutadas por tu operación logística, con foco en ocupación, agenda, cumplimiento y trazabilidad del viaje.",
     empty: "No hay cargas visibles para este transportista.",
   },
+};
+
+const PRIORITY_WEIGHT: Record<FreightRecord["priority"], number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  normal: 1,
+};
+
+const STATUS_WEIGHT: Record<FreightRecord["status"], number> = {
+  open: 1,
+  awaiting_proposals: 2,
+  proposal_received: 3,
+  assigned: 4,
+  scheduled: 5,
+  in_transit: 6,
+  delivered: 7,
+  completed: 8,
+  cancelled: 0,
 };
 
 function normalizeRole(role: unknown): UserRole {
@@ -70,6 +92,7 @@ function normalizeRole(role: unknown): UserRole {
 
 function getCompanySlug(company?: string) {
   if (!company) return "";
+
   return company
     .toLowerCase()
     .normalize("NFD")
@@ -94,6 +117,7 @@ function filterByRole(items: FreightRecord[], role: UserRole, company?: string) 
 
   if (role === "transportista") {
     const slug = getCompanySlug(company);
+
     return items.filter(
       (item) =>
         item.visibleToTransportistas &&
@@ -220,7 +244,7 @@ function buildSummary(items: FreightRecord[], role: UserRole) {
 }
 
 function buildAction(role: UserRole, item: FreightRecord) {
-  if (role === "admin") return "Ver detalle";
+  if (role === "admin") return "Ver request";
 
   if (role === "frigorifico") {
     if (item.status === "awaiting_proposals") return "Buscar transporte";
@@ -245,6 +269,16 @@ function buildAction(role: UserRole, item: FreightRecord) {
   return "Abrir";
 }
 
+function buildSortScore(item: FreightRecord) {
+  const priorityScore = PRIORITY_WEIGHT[item.priority] * 1000;
+  const statusScore = STATUS_WEIGHT[item.status] * 120;
+  const assignmentPenalty = 100 - Math.min(getFreightAssignmentPercent(item), 100);
+  const gapBoost = Math.min(getFreightGap(item), 50) * 8;
+  const compliancePenalty = 100 - Math.min(item.compliancePercent, 100);
+
+  return priorityScore + statusScore + assignmentPenalty + gapBoost + compliancePenalty;
+}
+
 function FreightPageContent() {
   const session = getMockSession();
   const role = normalizeRole(session?.role);
@@ -267,10 +301,7 @@ function FreightPageContent() {
 
     return base
       .filter((item) => matchesFilter(item, view))
-      .sort((a, b) => {
-        const priorityWeight = { critical: 4, high: 3, medium: 2, normal: 1 };
-        return priorityWeight[b.priority] - priorityWeight[a.priority];
-      });
+      .sort((a, b) => buildSortScore(b) - buildSortScore(a));
   }, [role, session?.company, view, requestId]);
 
   const summary = useMemo(() => buildSummary(visibleRecords, role), [visibleRecords, role]);
@@ -278,62 +309,125 @@ function FreightPageContent() {
   return (
     <section className="space-y-6 text-white">
       {request ? (
-        <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
-            Contexto
-          </p>
-          <h3 className="mt-2 text-lg font-semibold text-white">
-            {request.id} · {request.frigorifico}
-          </h3>
-          <p className="mt-1 text-sm text-white/60">
-            {request.origin} → {request.destination} · {request.quantity.toLocaleString()}{" "}
-            {request.unit}
-          </p>
-          <p className="mt-2 text-xs text-white/40">
-            Operación: {operation ? operation.status : "Sin operación"}
-          </p>
+        <div className="overflow-hidden rounded-[26px] border border-cyan-400/20 bg-cyan-400/[0.06]">
+          <div className="h-px bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent" />
+
+          <div className="px-6 py-5">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+              <div className="max-w-4xl">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-300/90">
+                  Contexto activo
+                </p>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/requests/${request.id}`}
+                    className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100 transition hover:bg-cyan-400/15"
+                  >
+                    {request.id}
+                  </Link>
+
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/72">
+                    {getRequestStatusLabel(request.status)}
+                  </span>
+
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/72">
+                    {getPriorityLabel(request.priority)}
+                  </span>
+                </div>
+
+                <Link href={`/requests/${request.id}`} className="group block">
+                  <h3 className="mt-4 text-[24px] font-semibold tracking-[-0.03em] text-white transition group-hover:text-cyan-200">
+                    {request.frigorifico}
+                  </h3>
+                </Link>
+
+                <p className="mt-2 text-sm leading-7 text-white/62">
+                  {getLivestockLabel(request.type)} · {request.origin} → {request.destination} ·{" "}
+                  {request.quantity.toLocaleString()} {request.unit}
+                </p>
+
+                <p className="mt-2 text-sm leading-7 text-white/50">
+                  Esta vista está filtrada por la solicitud seleccionada, permitiendo analizar
+                  exclusivamente la capa logística vinculada a este ciclo operativo.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href={`/requests/${request.id}`}
+                  className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  Ver request
+                </Link>
+
+                {operation ? (
+                  <Link
+                    href={`/operations?requestId=${request.id}`}
+                    className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/[0.08] hover:text-white"
+                  >
+                    Ver operación
+                  </Link>
+                ) : null}
+
+                <Link
+                  href="/requests"
+                  className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  Volver a solicitudes
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
 
-      <div className="rounded-[26px] border border-white/10 bg-white/[0.03] px-6 py-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-4xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-400/80">
-              {copy.kicker}
-            </p>
-            <h1 className="mt-2 text-[32px] font-semibold tracking-[-0.04em] text-white">
-              {copy.title}
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/58">
-              {copy.description}
-            </p>
-          </div>
+      <div className="overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.03]">
+        <div className="h-px bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent" />
 
-          <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1">
-            {[
-              { key: "all", label: "Todas" },
-              { key: "open", label: "Abiertas" },
-              { key: "attention", label: "Atención" },
-              { key: "assigned", label: "Asignadas" },
-              { key: "completed", label: "Completadas" },
-            ].map((item) => {
-              const active = item.key === view;
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setView(item.key as ViewFilter)}
-                  className={[
-                    "rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-all duration-200",
-                    active
-                      ? "bg-cyan-400/10 text-cyan-100"
-                      : "text-white/45 hover:text-white/80",
-                  ].join(" ")}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
+        <div className="px-6 py-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-4xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-400/80">
+                {copy.kicker}
+              </p>
+
+              <h1 className="mt-2 text-[32px] font-semibold tracking-[-0.04em] text-white">
+                {copy.title}
+              </h1>
+
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-white/58">
+                {copy.description}
+              </p>
+            </div>
+
+            <div className="inline-flex flex-wrap rounded-full border border-white/10 bg-white/[0.03] p-1">
+              {[
+                { key: "all", label: "Todas" },
+                { key: "open", label: "Abiertas" },
+                { key: "attention", label: "Atención" },
+                { key: "assigned", label: "Asignadas" },
+                { key: "completed", label: "Completadas" },
+              ].map((item) => {
+                const active = item.key === view;
+
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setView(item.key as ViewFilter)}
+                    className={[
+                      "rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-all duration-200",
+                      active
+                        ? "bg-cyan-400/10 text-cyan-100"
+                        : "text-white/45 hover:text-white/80",
+                    ].join(" ")}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -364,6 +458,8 @@ function FreightPageContent() {
             const assignmentPercent = getFreightAssignmentPercent(item);
             const gap = getFreightGap(item);
             const value = getFreightValue(item);
+            const linkedRequest = getRequestById(item.requestId);
+            const linkedOperation = getOperationByRequestId(item.requestId);
 
             return (
               <article
@@ -412,12 +508,12 @@ function FreightPageContent() {
                         Retiro {item.pickupDate}
                       </span>
 
-                      <button
-                        type="button"
+                      <Link
+                        href={`/requests/${item.requestId}`}
                         className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/78 transition hover:bg-white/[0.07] hover:text-white"
                       >
                         {buildAction(role, item)}
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -441,9 +537,7 @@ function FreightPageContent() {
                         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
                           Gap
                         </p>
-                        <p className="mt-3 text-[22px] font-semibold text-white">
-                          {gap}
-                        </p>
+                        <p className="mt-3 text-[22px] font-semibold text-white">{gap}</p>
                         <p className="mt-2 text-xs text-white/45">Unidades aún faltantes</p>
                       </article>
 
@@ -454,7 +548,9 @@ function FreightPageContent() {
                         <p className="mt-3 text-[22px] font-semibold text-white">
                           USD {value.toLocaleString()}
                         </p>
-                        <p className="mt-2 text-xs text-white/45">Costo logístico estimado/propuesto</p>
+                        <p className="mt-2 text-xs text-white/45">
+                          Costo logístico estimado/propuesto
+                        </p>
                       </article>
 
                       <article className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
@@ -487,6 +583,53 @@ function FreightPageContent() {
                         <span>Entrega estimada {item.deliveryDate}</span>
                         <span>{assignmentPercent}% asignado</span>
                       </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <Link
+                        href={`/requests/${item.requestId}`}
+                        className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 transition hover:bg-white/[0.05]"
+                      >
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                          Request asociada
+                        </p>
+                        <p className="mt-3 text-[18px] font-semibold text-white">
+                          {linkedRequest ? linkedRequest.id : item.requestId}
+                        </p>
+                        <p className="mt-2 text-xs text-white/45">
+                          Abrir detalle completo del ciclo
+                        </p>
+                      </Link>
+
+                      <Link
+                        href={`/freight?requestId=${item.requestId}`}
+                        className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 transition hover:bg-white/[0.05]"
+                      >
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                          Grupo logístico
+                        </p>
+                        <p className="mt-3 text-[18px] font-semibold text-white">
+                          {item.requestId}
+                        </p>
+                        <p className="mt-2 text-xs text-white/45">
+                          Ver todos los bloques de esta solicitud
+                        </p>
+                      </Link>
+
+                      <Link
+                        href={`/operations?requestId=${item.requestId}`}
+                        className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 transition hover:bg-white/[0.05]"
+                      >
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                          Operation
+                        </p>
+                        <p className="mt-3 text-[18px] font-semibold text-white">
+                          {linkedOperation ? linkedOperation.id : "No creada"}
+                        </p>
+                        <p className="mt-2 text-xs text-white/45">
+                          Abrir consolidación operacional
+                        </p>
+                      </Link>
                     </div>
                   </div>
 
@@ -528,10 +671,37 @@ function FreightPageContent() {
 
                     <article className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                        Contexto de la request
+                      </p>
+                      <div className="mt-4 space-y-3 text-sm text-white/58">
+                        <p>
+                          <span className="font-medium text-white/82">Solicitud:</span>{" "}
+                          {linkedRequest ? linkedRequest.id : item.requestId}
+                        </p>
+                        <p>
+                          <span className="font-medium text-white/82">Frigorífico:</span>{" "}
+                          {linkedRequest ? linkedRequest.frigorifico : "No disponible"}
+                        </p>
+                        <p>
+                          <span className="font-medium text-white/82">Estado:</span>{" "}
+                          {linkedRequest
+                            ? getRequestStatusLabel(linkedRequest.status)
+                            : "No disponible"}
+                        </p>
+                        <p>
+                          <span className="font-medium text-white/82">Tipo:</span>{" "}
+                          {linkedRequest ? getLivestockLabel(linkedRequest.type) : "No disponible"}
+                        </p>
+                      </div>
+                    </article>
+
+                    <article className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
                         Nota operativa
                       </p>
                       <p className="mt-3 text-sm leading-7 text-white/58">
-                        {item.notes ?? "Sin observaciones registradas."}
+                        {item.notes ??
+                          "Sin observaciones registradas. Este bloque debe leerse en conjunto con la request y la operación para entender el estado real de ejecución."}
                       </p>
                     </article>
                   </div>

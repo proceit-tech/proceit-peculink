@@ -62,6 +62,13 @@ const ROLE_COPY: Record<
   },
 };
 
+const PRIORITY_WEIGHT: Record<RequestRecord["priority"], number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  normal: 1,
+};
+
 function normalizeRole(role: unknown): UserRole {
   if (role === "admin") return "admin";
   if (role === "frigorifico") return "frigorifico";
@@ -72,6 +79,7 @@ function normalizeRole(role: unknown): UserRole {
 
 function getCurrentCompanySlug(company?: string): string {
   if (!company) return "";
+
   return company
     .toLowerCase()
     .normalize("NFD")
@@ -177,21 +185,37 @@ function filterRequestsByRole(
 
 function buildRoleSpecificActionLabel(role: UserRole, request: RequestRecord) {
   if (role === "admin") return "Ver detalle";
+
   if (role === "frigorifico") {
-    if (request.status === "open" || request.status === "receiving_offers") return "Gestionar ofertas";
-    if (request.status === "pending_transport") return "Coordinar transporte";
+    if (request.status === "open" || request.status === "receiving_offers") {
+      return "Gestionar solicitud";
+    }
+    if (request.status === "pending_transport") {
+      return "Coordinar transporte";
+    }
     return "Abrir solicitud";
   }
+
   if (role === "productor") {
-    if (["open", "receiving_offers"].includes(request.status)) return "Enviar oferta";
-    if (request.status === "negotiating") return "Seguir negociación";
+    if (["open", "receiving_offers"].includes(request.status)) {
+      return "Analizar oportunidad";
+    }
+    if (request.status === "negotiating") {
+      return "Seguir negociación";
+    }
     return "Ver oportunidad";
   }
+
   if (role === "transportista") {
-    if (request.status === "pending_transport" || request.status === "covered") return "Proponer transporte";
-    if (request.status === "in_operation") return "Seguir operación";
+    if (request.status === "pending_transport" || request.status === "covered") {
+      return "Ver detalle logístico";
+    }
+    if (request.status === "in_operation") {
+      return "Seguir operación";
+    }
     return "Ver carga";
   }
+
   return "Abrir";
 }
 
@@ -239,6 +263,32 @@ function buildSummaryMetrics(items: RequestRecord[], role: UserRole) {
   ];
 }
 
+function buildSortScore(request: RequestRecord) {
+  const priorityScore = PRIORITY_WEIGHT[request.priority] * 1000;
+  const statusBoost =
+    request.status === "pending_transport"
+      ? 350
+      : request.status === "receiving_offers"
+        ? 260
+        : request.status === "negotiating"
+          ? 220
+          : request.status === "partially_covered"
+            ? 180
+            : request.status === "open"
+              ? 140
+              : request.status === "covered"
+                ? 90
+                : request.status === "in_operation"
+                  ? 60
+                  : 20;
+
+  const coveragePenalty = 100 - Math.min(getCoveragePercent(request), 100);
+  const gapBoost = Math.min(getOpenGap(request), 1000);
+  const transportBoost = request.transportRequired ? 70 : 0;
+
+  return priorityScore + statusBoost + coveragePenalty + gapBoost + transportBoost;
+}
+
 export default function RequestsPage() {
   const session = getMockSession();
   const role = normalizeRole(session?.role);
@@ -248,57 +298,62 @@ export default function RequestsPage() {
 
   const visibleRequests = useMemo(() => {
     const scoped = filterRequestsByRole(requests, role, session?.company);
+
     return scoped
       .filter((item) => matchesViewFilter(item, view))
-      .sort((a, b) => {
-        const priorityWeight = { critical: 4, high: 3, medium: 2, normal: 1 };
-        return priorityWeight[b.priority] - priorityWeight[a.priority];
-      });
+      .sort((a, b) => buildSortScore(b) - buildSortScore(a));
   }, [role, session?.company, view]);
 
   const summary = useMemo(() => buildSummaryMetrics(visibleRequests, role), [visibleRequests, role]);
 
   return (
     <section className="space-y-6 text-white">
-      <div className="rounded-[26px] border border-white/10 bg-white/[0.03] px-6 py-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-4xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-400/80">
-              {copy.kicker}
-            </p>
-            <h1 className="mt-2 text-[32px] font-semibold tracking-[-0.04em] text-white">
-              {copy.title}
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/58">
-              {copy.description}
-            </p>
-          </div>
+      <div className="overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.03]">
+        <div className="h-px bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent" />
 
-          <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1">
-            {[
-              { key: "all", label: "Todas" },
-              { key: "open", label: "Abiertas" },
-              { key: "attention", label: "Atención" },
-              { key: "covered", label: "Cubiertas" },
-              { key: "closed", label: "Cerradas" },
-            ].map((item) => {
-              const active = item.key === view;
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setView(item.key as ViewFilter)}
-                  className={[
-                    "rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-all duration-200",
-                    active
-                      ? "bg-cyan-400/10 text-cyan-100"
-                      : "text-white/45 hover:text-white/80",
-                  ].join(" ")}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
+        <div className="px-6 py-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-4xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-400/80">
+                {copy.kicker}
+              </p>
+
+              <h1 className="mt-2 text-[32px] font-semibold tracking-[-0.04em] text-white">
+                {copy.title}
+              </h1>
+
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-white/58">
+                {copy.description}
+              </p>
+            </div>
+
+            <div className="inline-flex flex-wrap rounded-full border border-white/10 bg-white/[0.03] p-1">
+              {[
+                { key: "all", label: "Todas" },
+                { key: "open", label: "Abiertas" },
+                { key: "attention", label: "Atención" },
+                { key: "covered", label: "Cubiertas" },
+                { key: "closed", label: "Cerradas" },
+              ].map((item) => {
+                const active = item.key === view;
+
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setView(item.key as ViewFilter)}
+                    className={[
+                      "rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-all duration-200",
+                      active
+                        ? "bg-cyan-400/10 text-cyan-100"
+                        : "text-white/45 hover:text-white/80",
+                    ].join(" ")}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -343,9 +398,12 @@ export default function RequestsPage() {
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/72">
+                        <Link
+                          href={`/requests/${request.id}`}
+                          className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/72 transition hover:border-cyan-400/30 hover:bg-cyan-400/10 hover:text-cyan-100"
+                        >
                           {request.id}
-                        </span>
+                        </Link>
 
                         <span
                           className={[
@@ -366,9 +424,11 @@ export default function RequestsPage() {
                         </span>
                       </div>
 
-                      <h3 className="mt-4 text-[22px] font-semibold tracking-[-0.03em] text-white">
-                        {request.frigorifico}
-                      </h3>
+                      <Link href={`/requests/${request.id}`} className="group block">
+                        <h3 className="mt-4 text-[22px] font-semibold tracking-[-0.03em] text-white transition group-hover:text-cyan-300">
+                          {request.frigorifico}
+                        </h3>
+                      </Link>
 
                       <p className="mt-2 text-sm leading-7 text-white/58">
                         {getLivestockLabel(request.type)} · {request.quantity.toLocaleString()}{" "}
@@ -381,12 +441,12 @@ export default function RequestsPage() {
                         Necesario para {request.neededBy}
                       </span>
 
-                      <button
-                        type="button"
+                      <Link
+                        href={`/requests/${request.id}`}
                         className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/78 transition hover:bg-white/[0.07] hover:text-white"
                       >
                         {buildRoleSpecificActionLabel(role, request)}
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -401,9 +461,7 @@ export default function RequestsPage() {
                         <p className="mt-3 text-[22px] font-semibold text-white">
                           {coveragePercent}%
                         </p>
-                        <p className="mt-2 text-xs text-white/45">
-                          {getCoverageLabel(request)}
-                        </p>
+                        <p className="mt-2 text-xs text-white/45">{getCoverageLabel(request)}</p>
                       </article>
 
                       <article className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
@@ -418,7 +476,7 @@ export default function RequestsPage() {
 
                       <article className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
-                          Ofertas
+                          Offers
                         </p>
                         <p className="mt-3 text-[22px] font-semibold text-white">
                           {request.offersCount}
@@ -485,9 +543,7 @@ export default function RequestsPage() {
                         <p className="mt-3 text-[22px] font-semibold text-white">
                           {relatedFreight.length}
                         </p>
-                        <p className="mt-2 text-xs text-white/45">
-                          Abrir capa logística
-                        </p>
+                        <p className="mt-2 text-xs text-white/45">Abrir capa logística</p>
                       </Link>
 
                       <Link
@@ -516,7 +572,10 @@ export default function RequestsPage() {
                         {gross > 0 ? `USD ${gross.toLocaleString()}` : "—"}
                       </p>
                       <p className="mt-2 text-sm text-white/52">
-                        Target {request.priceTarget ? `USD ${request.priceTarget.toLocaleString()}` : "no definido"}
+                        Target{" "}
+                        {request.priceTarget
+                          ? `USD ${request.priceTarget.toLocaleString()}`
+                          : "no definido"}
                       </p>
                     </article>
 
@@ -524,6 +583,7 @@ export default function RequestsPage() {
                       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
                         Lectura operacional
                       </p>
+
                       <div className="mt-4 space-y-3 text-sm text-white/58">
                         <p>
                           <span className="font-medium text-white/82">Frigorífico:</span>{" "}

@@ -27,24 +27,30 @@ export default function RequestDetailPage() {
   if (!request) {
     return (
       <section className="space-y-6 text-white">
-        <div className="rounded-[26px] border border-white/10 bg-white/[0.03] px-6 py-8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-400/80">
-            Request Detail
-          </p>
-          <h1 className="mt-2 text-[30px] font-semibold tracking-[-0.04em] text-white">
-            Solicitud no encontrada
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-white/58">
-            No fue posible localizar la solicitud solicitada dentro del mock actual.
-          </p>
+        <div className="overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.03]">
+          <div className="h-px bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent" />
 
-          <div className="mt-6">
-            <Link
-              href="/requests"
-              className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/78 transition hover:bg-white/[0.07] hover:text-white"
-            >
-              Volver a solicitudes
-            </Link>
+          <div className="px-6 py-8">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-400/80">
+              Request Detail
+            </p>
+
+            <h1 className="mt-2 text-[30px] font-semibold tracking-[-0.04em] text-white">
+              Solicitud no encontrada
+            </h1>
+
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/58">
+              No fue posible localizar la solicitud solicitada dentro del mock actual.
+            </p>
+
+            <div className="mt-6">
+              <Link
+                href="/requests"
+                className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/78 transition hover:bg-white/[0.07] hover:text-white"
+              >
+                Volver a solicitudes
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -57,6 +63,7 @@ export default function RequestDetailPage() {
 
   const coveragePercent = getCoveragePercent(request);
   const estimatedGross = getEstimatedGrossValue(request);
+
   const totalOfferValue = relatedOffers.reduce((acc, item) => {
     const value =
       item.kind === "supply"
@@ -66,53 +73,84 @@ export default function RequestDetailPage() {
     return acc + value;
   }, 0);
 
+  const totalFreightValue = relatedFreight.reduce((acc, item) => acc + (item.totalFreightValue ?? 0), 0);
+
+  const operationValue = relatedOperation?.totalOperationValue ?? 0;
+
   return (
     <section className="space-y-6 text-white">
-      <div className="rounded-[26px] border border-white/10 bg-white/[0.03] px-6 py-6">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="max-w-4xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-400/80">
-              Request Detail
-            </p>
+      <div className="overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.03]">
+        <div className="h-px bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent" />
 
-            <h1 className="mt-2 text-[32px] font-semibold tracking-[-0.04em] text-white">
-              {request.id} · {request.frigorifico}
-            </h1>
+        <div className="px-6 py-6">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="max-w-4xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-400/80">
+                Request Detail
+              </p>
 
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/58">
-              {getLivestockLabel(request.type)} · {request.quantity.toLocaleString()}{" "}
-              {request.unit} · origen {request.origin} · destino {request.destination}
-            </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100">
+                  {request.id}
+                </span>
 
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/72">
-                {getRequestStatusLabel(request.status)}
-              </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/72">
+                  {getRequestStatusLabel(request.status)}
+                </span>
 
-              <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100">
-                {getPriorityLabel(request.priority)}
-              </span>
+                <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100">
+                  {getPriorityLabel(request.priority)}
+                </span>
 
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">
-                Necesario para {request.neededBy}
-              </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">
+                  Necesario para {request.neededBy}
+                </span>
+              </div>
+
+              <h1 className="mt-4 text-[32px] font-semibold tracking-[-0.04em] text-white">
+                {request.frigorifico}
+              </h1>
+
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-white/58">
+                {getLivestockLabel(request.type)} · {request.quantity.toLocaleString()}{" "}
+                {request.unit} · origen {request.origin} · destino {request.destination}
+              </p>
+
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-white/50">
+                Esta vista concentra el ciclo completo de la solicitud: demanda inicial,
+                respuesta comercial, cobertura logística y consolidación operacional en una sola lectura.
+              </p>
             </div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/requests"
-              className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/78 transition hover:bg-white/[0.07] hover:text-white"
-            >
-              Volver a solicitudes
-            </Link>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href="/requests"
+                className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/78 transition hover:bg-white/[0.07] hover:text-white"
+              >
+                Volver a solicitudes
+              </Link>
 
-            <Link
-              href={`/offers?requestId=${request.id}`}
-              className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/78 transition hover:bg-white/[0.07] hover:text-white"
-            >
-              Ver offers
-            </Link>
+              <Link
+                href={`/offers?requestId=${request.id}`}
+                className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/78 transition hover:bg-white/[0.07] hover:text-white"
+              >
+                Ver offers
+              </Link>
+
+              <Link
+                href={`/freight?requestId=${request.id}`}
+                className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/78 transition hover:bg-white/[0.07] hover:text-white"
+              >
+                Ver freight
+              </Link>
+
+              <Link
+                href={`/operations?requestId=${request.id}`}
+                className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/78 transition hover:bg-white/[0.07] hover:text-white"
+              >
+                Ver operation
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -187,15 +225,24 @@ export default function RequestDetailPage() {
           <div className="mt-4 space-y-3 text-sm leading-7 text-white/58">
             <p>
               La solicitud parte desde <span className="text-white/82">{request.frigorifico}</span>{" "}
-              con una cobertura actual de{" "}
-              <span className="text-white/82">{coveragePercent}%</span>, y ya generó{" "}
-              <span className="text-white/82">{relatedOffers.length}</span> offers,
+              con una cobertura actual de <span className="text-white/82">{coveragePercent}%</span>,
+              y ya generó <span className="text-white/82">{relatedOffers.length}</span> offers,
               <span className="text-white/82"> {relatedFreight.length}</span> bloques logísticos
               y una operación consolidada de{" "}
               <span className="text-white/82">
                 {relatedOperation ? relatedOperation.id : "aún no creada"}
               </span>
               .
+            </p>
+
+            <p>
+              El valor económico observado en la capa comercial alcanza{" "}
+              <span className="text-white/82">USD {totalOfferValue.toLocaleString()}</span>,
+              mientras que la capa logística representa{" "}
+              <span className="text-white/82">USD {totalFreightValue.toLocaleString()}</span>
+              {relatedOperation
+                ? ` y la operación consolidada totaliza USD ${operationValue.toLocaleString()}.`
+                : "."}
             </p>
 
             <p>
@@ -213,6 +260,38 @@ export default function RequestDetailPage() {
           <p className="mt-4 text-sm leading-7 text-white/58">
             {request.notes ?? "Sin observaciones registradas para esta solicitud."}
           </p>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <Link
+              href={`/offers?requestId=${request.id}`}
+              className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 transition hover:bg-white/[0.05]"
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                Capa comercial
+              </p>
+              <p className="mt-3 text-[18px] font-semibold text-white">
+                {relatedOffers.length} offers
+              </p>
+              <p className="mt-2 text-xs text-white/45">
+                Abrir análisis de propuestas vinculadas
+              </p>
+            </Link>
+
+            <Link
+              href={`/freight?requestId=${request.id}`}
+              className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 transition hover:bg-white/[0.05]"
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/38">
+                Capa logística
+              </p>
+              <p className="mt-3 text-[18px] font-semibold text-white">
+                {relatedFreight.length} bloques
+              </p>
+              <p className="mt-2 text-xs text-white/45">
+                Abrir cobertura y ejecución logística
+              </p>
+            </Link>
+          </div>
         </article>
       </div>
     </section>
