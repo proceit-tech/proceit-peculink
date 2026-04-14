@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { getMockSession } from "@/lib/mock/session";
+import type { UserRole } from "@/lib/mock/users";
 import {
   getRequestById,
   getOffersByRequestId,
@@ -19,10 +21,44 @@ import {
 import { getFreightValue } from "@/lib/mock/freight";
 import RequestLifecycleTimeline from "@/components/timeline/request-lifecycle-timeline";
 
+function normalizeRole(role: unknown): UserRole {
+  if (role === "admin") return "admin";
+  if (role === "frigorifico") return "frigorifico";
+  if (role === "productor") return "productor";
+  if (role === "transportista") return "transportista";
+  return "admin";
+}
+
+function buildPrimaryActionLabel(role: UserRole, status: string) {
+  if (role === "admin") return "Ver capa operativa";
+
+  if (role === "frigorifico") {
+    if (status === "open" || status === "receiving_offers") return "Gestionar solicitud";
+    if (status === "pending_transport") return "Coordinar transporte";
+    return "Seguir solicitud";
+  }
+
+  if (role === "productor") {
+    if (status === "open" || status === "receiving_offers") return "Analizar oportunidad";
+    if (status === "negotiating") return "Seguir negociación";
+    return "Ver contexto";
+  }
+
+  if (role === "transportista") {
+    if (status === "pending_transport" || status === "covered") return "Ver detalle logístico";
+    if (status === "in_operation") return "Seguir operación";
+    return "Ver carga";
+  }
+
+  return "Abrir";
+}
+
 export default function RequestDetailPage() {
   const params = useParams();
-  const requestId = String(params?.id ?? "");
+  const session = getMockSession();
+  const role = normalizeRole(session?.role);
 
+  const requestId = String(params?.id ?? "");
   const request = getRequestById(requestId);
 
   if (!request) {
@@ -81,6 +117,16 @@ export default function RequestDetailPage() {
 
   const operationValue = relatedOperation?.totalOperationValue ?? 0;
 
+  const canCreateSupplyOffer =
+    role === "productor" &&
+    ["open", "receiving_offers", "negotiating", "partially_covered"].includes(request.status);
+
+  const canCreateFreightProposal =
+    role === "transportista" &&
+    request.transportRequired &&
+    request.visibleToTransportistas &&
+    ["covered", "pending_transport", "partially_covered"].includes(request.status);
+
   return (
     <section className="space-y-6 text-white">
       <div className="overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.03]">
@@ -133,6 +179,31 @@ export default function RequestDetailPage() {
               >
                 Volver a solicitudes
               </Link>
+
+              <Link
+                href={`/requests/${request.id}`}
+                className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/78 transition hover:bg-white/[0.07] hover:text-white"
+              >
+                {buildPrimaryActionLabel(role, request.status)}
+              </Link>
+
+              {canCreateSupplyOffer ? (
+                <Link
+                  href={`/offers/new?requestId=${request.id}`}
+                  className="inline-flex items-center rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-400/20"
+                >
+                  Crear oferta
+                </Link>
+              ) : null}
+
+              {canCreateFreightProposal ? (
+                <Link
+                  href={`/freight/new?requestId=${request.id}`}
+                  className="inline-flex items-center rounded-xl border border-violet-400/20 bg-violet-400/10 px-4 py-2 text-sm font-medium text-violet-100 transition hover:bg-violet-400/20"
+                >
+                  Proponer transporte
+                </Link>
+              ) : null}
 
               <Link
                 href={`/offers?requestId=${request.id}`}

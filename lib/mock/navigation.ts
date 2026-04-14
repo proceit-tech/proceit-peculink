@@ -23,6 +23,10 @@ export const menuByRole: Record<UserRole, MenuSection[]> = {
       title: "Marketplace",
       items: [
         { label: "Solicitudes", href: "/requests" },
+
+        // ✅ NUEVO (SOLO ADMIN)
+        { label: "Nueva demanda", href: "/requests/new" },
+
         { label: "Ofertas", href: "/offers" },
         { label: "Transporte", href: "/freight" },
         { label: "Operaciones", href: "/operations" },
@@ -43,6 +47,10 @@ export const menuByRole: Record<UserRole, MenuSection[]> = {
       items: [
         { label: "Panel", href: "/dashboard" },
         { label: "Mis solicitudes", href: "/requests" },
+
+        // ✅ NUEVO (SOLO FRIGORÍFICO)
+        { label: "Nueva demanda", href: "/requests/new" },
+
         { label: "Ofertas recibidas", href: "/offers" },
       ],
     },
@@ -78,7 +86,10 @@ export const menuByRole: Record<UserRole, MenuSection[]> = {
       items: [
         { label: "Panel", href: "/dashboard" },
         { label: "Cargas disponibles", href: "/freight" },
-        { label: "Mis propuestas", href: "/offers" },
+
+        // 🔧 AJUSTE IMPORTANTE
+        // Antes estaba /offers (incorrecto para transportista)
+        { label: "Mis propuestas", href: "/freight" },
       ],
     },
     {

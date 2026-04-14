@@ -447,6 +447,31 @@ export default function RequestsPage() {
                       >
                         {buildRoleSpecificActionLabel(role, request)}
                       </Link>
+
+                      {role === "productor" &&
+                        ["open", "receiving_offers", "negotiating", "partially_covered"].includes(
+                          request.status
+                        ) && (
+                          <Link
+                            href={`/offers/new?requestId=${request.id}`}
+                            className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-400/20"
+                          >
+                            Crear oferta
+                          </Link>
+                        )}
+
+                      {role === "transportista" &&
+                        request.transportRequired &&
+                        ["covered", "pending_transport", "partially_covered"].includes(
+                          request.status
+                        ) && (
+                          <Link
+                            href={`/freight/new?requestId=${request.id}`}
+                            className="rounded-xl border border-violet-400/20 bg-violet-400/10 px-4 py-2 text-sm font-medium text-violet-100 transition hover:bg-violet-400/20"
+                          >
+                            Proponer transporte
+                          </Link>
+                        )}
                     </div>
                   </div>
                 </div>
