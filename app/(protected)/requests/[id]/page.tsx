@@ -16,6 +16,7 @@ import {
   getPriorityLabel,
   getRequestStatusLabel,
 } from "@/lib/mock/requests";
+import { getFreightValue } from "@/lib/mock/freight";
 import RequestLifecycleTimeline from "@/components/timeline/request-lifecycle-timeline";
 
 export default function RequestDetailPage() {
@@ -73,7 +74,10 @@ export default function RequestDetailPage() {
     return acc + value;
   }, 0);
 
-  const totalFreightValue = relatedFreight.reduce((acc, item) => acc + (item.totalFreightValue ?? 0), 0);
+  const totalFreightValue = relatedFreight.reduce(
+    (acc, item) => acc + getFreightValue(item),
+    0
+  );
 
   const operationValue = relatedOperation?.totalOperationValue ?? 0;
 
