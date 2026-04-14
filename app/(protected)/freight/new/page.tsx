@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMockSession } from "@/lib/mock/session";
 import type { UserRole } from "@/lib/mock/users";
@@ -14,7 +14,12 @@ import {
 } from "@/lib/mock/requests";
 
 type FreightPriority = "normal" | "medium" | "high" | "critical";
-type VehicleType = "truck_small" | "truck_medium" | "truck_large" | "refrigerated" | "multi";
+type VehicleType =
+  | "truck_small"
+  | "truck_medium"
+  | "truck_large"
+  | "refrigerated"
+  | "multi";
 type UnitType = "cabezas" | "kg" | "ton";
 
 type FormValues = {
@@ -339,7 +344,7 @@ function SelectInput({
   );
 }
 
-export default function NewFreightOfferPage() {
+function FreightNewPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const session = getMockSession();
@@ -504,7 +509,7 @@ export default function NewFreightOfferPage() {
               Esta propuesta debe estar vinculada a una demanda
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-white/58">
-              Para crear una propuesta logística, abre esta pantalla con un `requestId`
+              Para crear una propuesta logística, abre esta pantalla con un requestId
               válido desde una solicitud o desde la capa logística correspondiente.
             </p>
 
@@ -536,7 +541,7 @@ export default function NewFreightOfferPage() {
               No existe la solicitud vinculada
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-white/58">
-              El `requestId` informado no corresponde a una demanda válida dentro del mock actual.
+              El requestId informado no corresponde a una demanda válida dentro del mock actual.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -881,15 +886,11 @@ export default function NewFreightOfferPage() {
                   <input
                     type="checkbox"
                     checked={values.immediateDispatch}
-                    onChange={(event) =>
-                      updateField("immediateDispatch", event.target.checked)
-                    }
+                    onChange={(event) => updateField("immediateDispatch", event.target.checked)}
                     className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent"
                   />
                   <div>
-                    <p className="text-sm font-medium text-white/88">
-                      Salida inmediata
-                    </p>
+                    <p className="text-sm font-medium text-white/88">Salida inmediata</p>
                     <p className="mt-1 text-xs leading-6 text-white/42">
                       Señal operativa fuerte para acelerar asignación y programación.
                     </p>
@@ -1003,7 +1004,9 @@ export default function NewFreightOfferPage() {
                     Request
                   </p>
                   <p className="mt-2 text-[18px] font-semibold text-white">{request.id}</p>
-                  <p className="mt-2 text-xs text-white/45">{getRequestStatusLabel(request.status)}</p>
+                  <p className="mt-2 text-xs text-white/45">
+                    {getRequestStatusLabel(request.status)}
+                  </p>
                 </div>
 
                 <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
@@ -1022,9 +1025,7 @@ export default function NewFreightOfferPage() {
                   <p className="mt-2 text-[18px] font-semibold text-white">
                     {request.quantity.toLocaleString()} {request.unit}
                   </p>
-                  <p className="mt-2 text-xs text-white/45">
-                    {getLivestockLabel(request.type)}
-                  </p>
+                  <p className="mt-2 text-xs text-white/45">{getLivestockLabel(request.type)}</p>
                 </div>
 
                 <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
@@ -1124,4 +1125,22 @@ export default function NewFreightOfferPage() {
       </div>
     </section>
   );
-} 
+}
+
+export default function NewFreightOfferPage() {
+  return (
+    <Suspense
+      fallback={
+        <section className="space-y-6 text-white">
+          <div className="rounded-[26px] border border-white/10 bg-white/[0.03] px-6 py-8">
+            <p className="text-sm leading-7 text-white/58">
+              Cargando propuesta logística...
+            </p>
+          </div>
+        </section>
+      }
+    >
+      <FreightNewPageContent />
+    </Suspense>
+  );
+}

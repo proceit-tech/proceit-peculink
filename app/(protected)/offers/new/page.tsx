@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMockSession } from "@/lib/mock/session";
 import type { UserRole } from "@/lib/mock/users";
@@ -289,7 +289,7 @@ function SelectInput({
   );
 }
 
-export default function NewSupplyOfferPage() {
+function OffersNewPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const session = getMockSession();
@@ -379,7 +379,9 @@ export default function NewSupplyOfferPage() {
 
       await new Promise((resolve) => setTimeout(resolve, 900));
 
-      setSubmitMessage("Oferta creada en modo mock. Redirigiendo al grupo de offers de la demanda...");
+      setSubmitMessage(
+        "Oferta creada en modo mock. Redirigiendo al grupo de offers de la demanda..."
+      );
       setTimeout(() => {
         router.push(`/offers?requestId=${requestId}`);
       }, 800);
@@ -440,7 +442,7 @@ export default function NewSupplyOfferPage() {
               Esta oferta debe estar vinculada a una demanda
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-white/58">
-              Para crear una oferta de productor, abre esta pantalla con un `requestId`
+              Para crear una oferta de productor, abre esta pantalla con un requestId
               válido, por ejemplo desde el detalle de una solicitud o desde el listado de oportunidades.
             </p>
 
@@ -472,7 +474,7 @@ export default function NewSupplyOfferPage() {
               No existe la solicitud vinculada
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-white/58">
-              El `requestId` informado no corresponde a una demanda válida dentro del mock actual.
+              El requestId informado no corresponde a una demanda válida dentro del mock actual.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -763,7 +765,8 @@ export default function NewSupplyOfferPage() {
                       Acepta adjudicación parcial
                     </p>
                     <p className="mt-1 text-xs leading-6 text-white/42">
-                      Permite cerrar solo una parte del volumen ofertado si la demanda así lo requiere.
+                      Permite cerrar solo una parte del volumen ofertado si la demanda así lo
+                      requiere.
                     </p>
                   </div>
                 </label>
@@ -891,7 +894,9 @@ export default function NewSupplyOfferPage() {
                     Request
                   </p>
                   <p className="mt-2 text-[18px] font-semibold text-white">{request.id}</p>
-                  <p className="mt-2 text-xs text-white/45">{getRequestStatusLabel(request.status)}</p>
+                  <p className="mt-2 text-xs text-white/45">
+                    {getRequestStatusLabel(request.status)}
+                  </p>
                 </div>
 
                 <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
@@ -910,9 +915,7 @@ export default function NewSupplyOfferPage() {
                   <p className="mt-2 text-[18px] font-semibold text-white">
                     {request.quantity.toLocaleString()} {request.unit}
                   </p>
-                  <p className="mt-2 text-xs text-white/45">
-                    {getLivestockLabel(request.type)}
-                  </p>
+                  <p className="mt-2 text-xs text-white/45">{getLivestockLabel(request.type)}</p>
                 </div>
 
                 <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
@@ -1011,5 +1014,21 @@ export default function NewSupplyOfferPage() {
         </aside>
       </div>
     </section>
+  );
+}
+
+export default function NewSupplyOfferPage() {
+  return (
+    <Suspense
+      fallback={
+        <section className="space-y-6 text-white">
+          <div className="rounded-[26px] border border-white/10 bg-white/[0.03] px-6 py-8">
+            <p className="text-sm leading-7 text-white/58">Cargando oferta comercial...</p>
+          </div>
+        </section>
+      }
+    >
+      <OffersNewPageContent />
+    </Suspense>
   );
 }
