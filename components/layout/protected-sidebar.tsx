@@ -17,12 +17,10 @@ export default function ProtectedSidebar() {
   return (
     <aside className="w-[248px] shrink-0 border-r border-white/10 bg-[linear-gradient(180deg,#0A0E13_0%,#070A0F_100%)]">
       <div className="flex h-full flex-col">
-        <div className="border-b border-white/8 px-6 pb-6 pt-7">
-          <div className="flex items-center">
-            <span className="text-[31px] font-semibold leading-none tracking-[-0.055em] text-white">
-              PecuLink
-            </span>
-          </div>
+       <div className="flex h-[72px] items-center border-b border-white/10 px-6">
+        <span className="text-[31px] font-semibold leading-none tracking-[-0.055em] text-white">
+            PecuLink
+        </span>
         </div>
 
         <div className="flex-1 px-4 py-5">
