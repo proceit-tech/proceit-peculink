@@ -3,17 +3,28 @@
 import type { UserRole } from "@/lib/mock/users";
 
 export type MockSession = {
+  id: string;
   name: string;
   company: string;
   email: string;
   role: UserRole;
+
+  // preparação enterprise
+  tenantId?: string;
+  permissions?: string[];
 };
 
 const STORAGE_KEY = "peculink_mock_session";
 
 export function setMockSession(session: MockSession) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+
+  const payload: MockSession = {
+    ...session,
+    id: session.id ?? crypto.randomUUID(),
+  };
+
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
 
 export function getMockSession(): MockSession | null {
@@ -23,7 +34,12 @@ export function getMockSession(): MockSession | null {
   if (!raw) return null;
 
   try {
-    return JSON.parse(raw) as MockSession;
+    const parsed = JSON.parse(raw) as MockSession;
+
+    return {
+      ...parsed,
+      id: parsed.id ?? "mock-user",
+    };
   } catch {
     return null;
   }
@@ -32,4 +48,18 @@ export function getMockSession(): MockSession | null {
 export function clearMockSession() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(STORAGE_KEY);
+}
+
+/**
+ * 🔥 EXTRA (IMPORTANTE)
+ * permite simular troca de perfil sem logout
+ */
+export function switchMockRole(role: UserRole) {
+  const current = getMockSession();
+  if (!current) return;
+
+  setMockSession({
+    ...current,
+    role,
+  });
 }
