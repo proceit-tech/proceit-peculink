@@ -5,7 +5,6 @@ import { getMockSession } from "@/lib/mock/session";
 export default function DashboardPage() {
   const session = getMockSession();
   const role = session?.role ?? "frigorifico";
-
   const content = getDashboardContent(role);
 
   return (
@@ -55,6 +54,23 @@ export default function DashboardPage() {
 
 function getDashboardContent(role: string) {
   switch (role) {
+    case "admin":
+      return {
+        kicker: "Panel de administración",
+        title: "Control general del marketplace",
+        description:
+          "Supervisa el comportamiento completo de la plataforma, el volumen transaccionado, la actividad de usuarios y el desempeño operativo por etapa.",
+        metrics: [
+          { label: "Usuarios activos", value: "148" },
+          { label: "Solicitudes abiertas", value: "24" },
+          { label: "Operaciones en curso", value: "12" },
+          { label: "Comisión estimada", value: "USD 18.400" },
+        ],
+        panelTitle: "Visibilidad ejecutiva del ecosistema",
+        panelDescription:
+          "El entorno administrativo permite monitorear la salud operativa del marketplace, validar adopción y demostrar el modelo económico a potenciales inversores.",
+      };
+
     case "productor":
       return {
         kicker: "Panel del productor",

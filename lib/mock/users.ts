@@ -1,4 +1,8 @@
-export type UserRole = "frigorifico" | "productor" | "transportista";
+export type UserRole =
+  | "frigorifico"
+  | "productor"
+  | "transportista"
+  | "admin";
 
 export type MockUser = {
   id: string;
@@ -12,13 +16,24 @@ export type MockUser = {
 
 export const mockUsers: MockUser[] = [
   {
+    id: "USR-ADM-001",
+    name: "Elisa Romero",
+    company: "PecuLink Platform",
+    email: "admin@peculink.com",
+    password: "123456",
+    role: "admin",
+    description:
+      "Supervisa el marketplace, monitorea operaciones, usuarios y comisiones de la plataforma.",
+  },
+  {
     id: "USR-FRIG-001",
     name: "Carlos Mendoza",
     company: "Frigorífico SUL",
     email: "compras@frigorificosul.com",
     password: "123456",
     role: "frigorifico",
-    description: "Publica solicitudes, negocia con productores y coordina transporte.",
+    description:
+      "Publica solicitudes, negocia con productores y coordina la contratación de transporte.",
   },
   {
     id: "USR-PROD-001",
@@ -27,7 +42,8 @@ export const mockUsers: MockUser[] = [
     email: "ventas@ganaderasanmiguel.com",
     password: "123456",
     role: "productor",
-    description: "Responde solicitudes, envía ofertas y cierra acuerdos comerciales.",
+    description:
+      "Responde oportunidades, envía ofertas comerciales y acompaña operaciones adjudicadas.",
   },
   {
     id: "USR-TRANS-001",
@@ -36,6 +52,7 @@ export const mockUsers: MockUser[] = [
     email: "operaciones@rutasur.com",
     password: "123456",
     role: "transportista",
-    description: "Visualiza cargas disponibles y presenta propuestas de transporte.",
+    description:
+      "Visualiza cargas disponibles, presenta propuestas de transporte y gestiona viajes asignados.",
   },
 ];

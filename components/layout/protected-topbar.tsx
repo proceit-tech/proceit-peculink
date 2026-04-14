@@ -53,6 +53,8 @@ export default function ProtectedTopbar() {
 
 function getRoleLabel(role?: string) {
   switch (role) {
+    case "admin":
+      return "Administrador";
     case "frigorifico":
       return "Frigorífico";
     case "productor":

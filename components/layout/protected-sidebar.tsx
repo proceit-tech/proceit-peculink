@@ -4,41 +4,14 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { getMockSession } from "@/lib/mock/session";
+import { menuByRole } from "@/lib/mock/navigation";
 import type { UserRole } from "@/lib/mock/users";
-
-type MenuItem = {
-  label: string;
-  href: string;
-};
-
-const menuByRole: Record<UserRole, MenuItem[]> = {
-  frigorifico: [
-    { label: "Panel", href: "/dashboard" },
-    { label: "Solicitudes", href: "/requests" },
-    { label: "Ofertas recibidas", href: "/offers" },
-    { label: "Transporte", href: "/freight" },
-    { label: "Operaciones", href: "/operations" },
-  ],
-  productor: [
-    { label: "Panel", href: "/dashboard" },
-    { label: "Oportunidades", href: "/requests" },
-    { label: "Mis ofertas", href: "/offers" },
-    { label: "Operaciones", href: "/operations" },
-  ],
-  transportista: [
-    { label: "Panel", href: "/dashboard" },
-    { label: "Cargas disponibles", href: "/freight" },
-    { label: "Mis propuestas", href: "/offers" },
-    { label: "Operaciones", href: "/operations" },
-  ],
-};
 
 export default function ProtectedSidebar() {
   const pathname = usePathname();
   const session = getMockSession();
 
   const role: UserRole = session?.role ?? "frigorifico";
-
   const menu = useMemo(() => menuByRole[role], [role]);
 
   return (
@@ -83,7 +56,7 @@ export default function ProtectedSidebar() {
             </p>
             <p className="mt-2 text-sm font-semibold text-white">MVP Mock activo</p>
             <p className="mt-1 text-sm leading-6 text-white/55">
-              Flujo comercial, negociación y transporte con datos simulados para presentación.
+              Flujo comercial, negociación y transporte con datos simulados para presentación ejecutiva.
             </p>
           </div>
         </div>
