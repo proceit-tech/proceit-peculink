@@ -15,21 +15,20 @@ export default function ProtectedSidebar() {
   const menu = useMemo(() => menuByRole[role], [role]);
 
   return (
-    <aside className="w-[248px] shrink-0 border-r border-white/10 bg-[linear-gradient(180deg,#0a0f14_0%,#06090d_100%)]">
+    <aside className="w-[244px] shrink-0 border-r border-white/10 bg-[linear-gradient(180deg,#0a0e13_0%,#070a0f_100%)]">
       <div className="flex h-full flex-col">
-        <div className="px-6 pb-6 pt-7">
-          <div className="inline-flex flex-col">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.38em] text-cyan-400/85">
-              Marketplace ganadero
-            </span>
-            <span className="mt-3 text-[30px] font-semibold leading-none tracking-[-0.04em] text-white">
-              PecuLink
-            </span>
-          </div>
+        <div className="px-6 pb-5 pt-7">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.36em] text-cyan-400/85">
+            Marketplace ganadero
+          </p>
+
+          <h1 className="mt-3 text-[28px] font-semibold leading-none tracking-[-0.05em] text-white">
+            PecuLink
+          </h1>
         </div>
 
-        <div className="border-t border-white/6 px-3 pt-4">
-          <nav className="space-y-1.5">
+        <div className="border-t border-white/6 px-4 pt-5">
+          <nav className="space-y-2">
             {menu.map((item) => {
               const active = pathname === item.href;
 
@@ -38,18 +37,18 @@ export default function ProtectedSidebar() {
                   key={item.href}
                   href={item.href}
                   className={[
-                    "group relative flex items-center rounded-2xl px-4 py-3 text-[14px] font-medium transition-all duration-200",
+                    "group relative flex items-center rounded-xl px-4 py-3 text-[14px] font-medium transition-all duration-200",
                     active
-                      ? "bg-white/[0.06] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
-                      : "text-white/52 hover:bg-white/[0.04] hover:text-white",
+                      ? "border border-white/8 bg-white/[0.06] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                      : "text-white/50 hover:bg-white/[0.04] hover:text-white",
                   ].join(" ")}
                 >
                   <span
                     className={[
-                      "absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full transition-all duration-200",
+                      "absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full transition-all duration-200",
                       active
-                        ? "bg-cyan-400 opacity-100 shadow-[0_0_14px_rgba(34,211,238,0.45)]"
-                        : "bg-transparent opacity-0",
+                        ? "bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.45)]"
+                        : "bg-transparent group-hover:bg-white/20",
                     ].join(" ")}
                   />
 

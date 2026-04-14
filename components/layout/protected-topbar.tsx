@@ -29,52 +29,42 @@ export default function ProtectedTopbar() {
   }, []);
 
   return (
-    <header className="border-b border-white/10 bg-[rgba(5,7,10,0.68)] backdrop-blur-xl">
-      <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-end px-6">
+    <header className="border-b border-white/10 bg-[rgba(5,7,10,0.72)] backdrop-blur-xl">
+      <div className="mx-auto flex h-[68px] max-w-7xl items-center justify-end px-6">
         <div className="relative" ref={dropdownRef}>
           <button
             type="button"
             onClick={() => setOpen((prev) => !prev)}
-            className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 transition hover:border-white/15 hover:bg-white/[0.06]"
+            className="group flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 transition hover:border-white/15 hover:bg-white/[0.06]"
           >
-            <div className="text-right">
-              <p className="max-w-[220px] truncate text-sm font-semibold text-white">
-                {session?.company ?? "PecuLink Platform"}
-              </p>
-            </div>
+            <span className="max-w-[220px] truncate text-sm font-semibold text-white">
+              {session?.company ?? "PecuLink Platform"}
+            </span>
 
-            <div
+            <svg
               className={[
-                "text-white/45 transition-transform duration-200",
+                "h-4 w-4 text-white/45 transition-transform duration-200",
                 open ? "rotate-180" : "",
               ].join(" ")}
+              viewBox="0 0 20 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 20 20"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-              >
-                <path
-                  d="M5 7.5L10 12.5L15 7.5"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
+              <path
+                d="M5 7.5L10 12.5L15 7.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
 
           {open ? (
-            <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-[260px] rounded-2xl border border-white/10 bg-[#0B1015] p-2 shadow-[0_25px_80px_rgba(0,0,0,0.45)]">
-              <div className="rounded-xl border border-white/6 bg-white/[0.03] px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-white/35">
-                  Empresa
-                </p>
-                <p className="mt-1 text-sm font-semibold text-white">
+            <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[220px] overflow-hidden rounded-xl border border-white/10 bg-[#0B1015] shadow-[0_18px_50px_rgba(0,0,0,0.4)]">
+              <div className="border-b border-white/8 px-4 py-3">
+                <p className="truncate text-sm font-semibold text-white">
                   {session?.company ?? "PecuLink Platform"}
                 </p>
                 <p className="mt-1 text-xs text-white/45">
@@ -82,18 +72,16 @@ export default function ProtectedTopbar() {
                 </p>
               </div>
 
-              <div className="my-2 h-px bg-white/6" />
-
               <button
                 type="button"
-                className="flex w-full items-center rounded-xl px-4 py-3 text-left text-sm font-medium text-white/78 transition hover:bg-white/[0.05] hover:text-white"
+                className="flex w-full items-center px-4 py-3 text-left text-sm font-medium text-white/75 transition hover:bg-white/[0.05] hover:text-white"
               >
                 Perfil
               </button>
 
               <button
                 type="button"
-                className="flex w-full items-center rounded-xl px-4 py-3 text-left text-sm font-medium text-white/78 transition hover:bg-white/[0.05] hover:text-white"
+                className="flex w-full items-center px-4 py-3 text-left text-sm font-medium text-white/75 transition hover:bg-white/[0.05] hover:text-white"
               >
                 Plan
               </button>
@@ -101,7 +89,7 @@ export default function ProtectedTopbar() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="mt-1 flex w-full items-center rounded-xl px-4 py-3 text-left text-sm font-medium text-red-200/90 transition hover:bg-red-400/10 hover:text-red-100"
+                className="flex w-full items-center px-4 py-3 text-left text-sm font-medium text-red-200/90 transition hover:bg-red-400/10 hover:text-red-100"
               >
                 Salir
               </button>
