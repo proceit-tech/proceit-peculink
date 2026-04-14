@@ -1124,4 +1124,4 @@ export default function NewFreightOfferPage() {
       </div>
     </section>
   );
-}
+} 
