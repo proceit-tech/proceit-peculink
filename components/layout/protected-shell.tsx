@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import ProtectedSidebar from "./protected-sidebar";
 import ProtectedTopbar from "./protected-topbar";
 
@@ -10,24 +10,17 @@ type Props = {
 
 export default function ProtectedShell({ children }: Props) {
   return (
-    <div className="flex h-screen w-full bg-[#05070A] text-white">
-      
-      {/* Sidebar */}
+    <div className="flex h-screen w-full overflow-hidden bg-[#05070A] text-white">
       <ProtectedSidebar />
 
-      {/* Main Area */}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        
-        {/* Topbar */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <ProtectedTopbar />
 
-        {/* Content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto max-w-7xl">
+        <main className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-7xl px-6 py-6">
             {children}
           </div>
         </main>
-
       </div>
     </div>
   );

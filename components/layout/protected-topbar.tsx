@@ -13,35 +13,35 @@ export default function ProtectedTopbar() {
   }
 
   return (
-    <header className="border-b border-white/10 bg-black/20 backdrop-blur">
-      <div className="mx-auto flex h-[88px] max-w-7xl items-center justify-between px-6">
-        <div className="flex flex-col">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-400/80">
+    <header className="border-b border-white/10 bg-[rgba(5,7,10,0.72)] backdrop-blur">
+      <div className="mx-auto flex h-[68px] max-w-7xl items-center justify-between px-6">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-cyan-400/80">
             PecuLink
-          </span>
-          <h1 className="text-lg font-semibold tracking-tight text-white">
+          </p>
+          <h1 className="mt-1 truncate text-[15px] font-semibold tracking-tight text-white">
             Panel de control
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/45">
-              Perfil activo
+        <div className="flex items-center gap-2">
+          <div className="hidden rounded-xl border border-white/10 bg-white/5 px-3 py-2 md:block">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/35">
+              Empresa activa
             </p>
-            <p className="text-sm font-semibold text-white">
-              {session?.company ?? "Frigorífico Sur"}
+            <p className="mt-0.5 max-w-[220px] truncate text-sm font-medium text-white/85">
+              {session?.company ?? "PecuLink Platform"}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-white">
+          <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-[13px] font-semibold text-white">
             {getRoleLabel(session?.role)}
           </div>
 
           <button
             type="button"
             onClick={handleLogout}
-            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[13px] font-medium text-white/75 transition hover:bg-white/10 hover:text-white"
           >
             Salir
           </button>
@@ -62,6 +62,6 @@ function getRoleLabel(role?: string) {
     case "transportista":
       return "Transportista";
     default:
-      return "Frigorífico";
+      return "Administrador";
   }
 }

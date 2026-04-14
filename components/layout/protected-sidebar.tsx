@@ -15,48 +15,59 @@ export default function ProtectedSidebar() {
   const menu = useMemo(() => menuByRole[role], [role]);
 
   return (
-    <aside className="w-[290px] border-r border-white/10 bg-white/5 backdrop-blur">
+    <aside className="w-[248px] shrink-0 border-r border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] backdrop-blur">
       <div className="flex h-full flex-col">
-        <div className="flex h-[88px] items-center border-b border-white/10 px-6">
+        <div className="border-b border-white/10 px-5 py-5">
           <div className="flex flex-col">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-400/80">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-cyan-400/80">
               Marketplace ganadero
             </span>
-            <span className="mt-1 text-[34px] font-semibold leading-none tracking-tight text-white">
-              PecuLink
-            </span>
+
+            <div className="mt-2 flex items-end gap-2">
+              <span className="text-[18px] font-semibold leading-none tracking-[-0.03em] text-white">
+                PecuLink
+              </span>
+            </div>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 py-5">
-          {menu.map((item) => {
-            const active = pathname === item.href;
+        <div className="flex-1 px-3 py-4">
+          <nav className="space-y-1">
+            {menu.map((item) => {
+              const active = pathname === item.href;
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={[
-                  "flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200",
-                  active
-                    ? "border border-cyan-400/20 bg-cyan-400/10 text-white shadow-[0_0_30px_rgba(34,211,238,0.08)]"
-                    : "text-white/65 hover:bg-white/5 hover:text-white",
-                ].join(" ")}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={[
+                    "group relative flex items-center rounded-xl px-3 py-2.5 text-[14px] font-medium transition-all duration-200",
+                    active
+                      ? "bg-cyan-400/10 text-white"
+                      : "text-white/62 hover:bg-white/5 hover:text-white",
+                  ].join(" ")}
+                >
+                  <span
+                    className={[
+                      "absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full transition-all duration-200",
+                      active ? "bg-cyan-400 opacity-100" : "bg-transparent opacity-0 group-hover:opacity-60",
+                    ].join(" ")}
+                  />
 
-        <div className="border-t border-white/10 p-4">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/45">
-              Estado de la plataforma
+                  <span className="pl-2">{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="border-t border-white/10 px-5 py-4">
+          <div className="space-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
+              Sesión
             </p>
-            <p className="mt-2 text-sm font-semibold text-white">MVP Mock activo</p>
-            <p className="mt-1 text-sm leading-6 text-white/55">
-              Flujo comercial, negociación y transporte con datos simulados para presentación ejecutiva.
+            <p className="truncate text-sm font-medium text-white/78">
+              {session?.company ?? "PecuLink Platform"}
             </p>
           </div>
         </div>
