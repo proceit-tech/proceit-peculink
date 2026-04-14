@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getMockSession } from "@/lib/mock/session";
 import type { UserRole } from "@/lib/mock/users";
@@ -234,7 +234,7 @@ function buildAction(role: UserRole, item: OperationRecord) {
   return "Abrir";
 }
 
-export default function OperationsPage() {
+function OperationsPageContent() {
   const session = getMockSession();
   const role = normalizeRole(session?.role);
   const copy = ROLE_COPY[role];
@@ -514,5 +514,21 @@ export default function OperationsPage() {
         )}
       </div>
     </section>
+  );
+}
+
+export default function OperationsPage() {
+  return (
+    <Suspense
+      fallback={
+        <section className="space-y-6 text-white">
+          <div className="rounded-[26px] border border-white/10 bg-white/[0.03] px-6 py-8">
+            <p className="text-sm leading-7 text-white/58">Cargando operaciones...</p>
+          </div>
+        </section>
+      }
+    >
+      <OperationsPageContent />
+    </Suspense>
   );
 }
