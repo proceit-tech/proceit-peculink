@@ -61,29 +61,30 @@ export default function LoginPage() {
           <div className="grid h-[560px] grid-cols-[1fr_1fr]">
 
             {/* LEFT */}
-            <section className="flex flex-col justify-center border-r border-white/10 px-10">
+            <section className="flex items-center justify-center border-r border-white/10">
 
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.3em] text-cyan-400/80">
-                  PECULINK
-                </p>
+  <div className="text-center max-w-md">
 
-                <h1 className="mt-4 text-3xl font-semibold leading-tight">
-                  Marketplace ganadero B2B
-                </h1>
+    <p className="text-[11px] uppercase tracking-[0.4em] text-cyan-400/80">
+      Plataforma
+    </p>
 
-                <p className="mt-4 text-sm text-white/60 leading-6 max-w-md">
-                  Demanda, oferta y transporte integrados en una sola operación.
-                </p>
+    <h1 className="mt-3 text-5xl font-semibold tracking-tight">
+      PecuLink
+    </h1>
 
-                <div className="mt-8 space-y-3 text-sm text-white/60">
-                  <p>• Frigoríficos publican demanda</p>
-                  <p>• Productores responden con oferta</p>
-                  <p>• Transporte se asigna por operación</p>
-                </div>
-              </div>
+    <p className="mt-4 text-sm text-white/60 leading-6">
+      Marketplace ganadero B2B
+    </p>
 
-            </section>
+    <p className="mt-6 text-sm text-white/50 leading-6">
+      Demanda, oferta y transporte integrados
+      en una sola operación.
+    </p>
+
+  </div>
+
+</section>
 
             {/* RIGHT */}
             <section className="flex flex-col justify-center px-10">
@@ -123,7 +124,7 @@ export default function LoginPage() {
                             </p>
                           </div>
 
-                          <span className="text-[10px] uppercase text-cyan-400">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
                             {getRoleLabel(user.role)}
                           </span>
                         </div>

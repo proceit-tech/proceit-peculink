@@ -30,7 +30,7 @@ export default function ProtectedTopbar() {
               Perfil activo
             </p>
             <p className="text-sm font-semibold text-white">
-              {session?.company ?? "Frigorífico SUL"}
+              {session?.company ?? "Frigorífico Sur"}
             </p>
           </div>
 

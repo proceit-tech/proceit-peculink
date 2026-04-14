@@ -28,8 +28,8 @@ export const mockUsers: MockUser[] = [
   {
     id: "USR-FRIG-001",
     name: "Carlos Mendoza",
-    company: "Frigorífico SUL",
-    email: "compras@frigorificosul.com",
+    company: "Frigorífico Sur",
+    email: "compras@frigorificosur.com",
     password: "123456",
     role: "frigorifico",
     description:

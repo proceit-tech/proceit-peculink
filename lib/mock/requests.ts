@@ -28,7 +28,7 @@ export type RequestRecord = {
 export const requests: RequestRecord[] = [
   {
     id: "REQ-001",
-    frigorifico: "Frigorífico SUL",
+    frigorifico: "Frigorífico Sur",
     type: "bovino",
     quantity: 50000,
     unit: "cabezas",
