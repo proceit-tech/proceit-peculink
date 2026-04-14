@@ -106,6 +106,12 @@ const DASHBOARD_BY_PERIOD: Record<PeriodKey, DashboardData> = {
       { label: "Operaciones activas", value: "12", delta: "+1", trend: "up" },
       { label: "Comisión estimada", value: "USD 18.400", delta: "+4,8%", trend: "up" },
     ],
+    operationalMetrics: [
+      { label: "Ofertas recibidas", value: "186", delta: "+5,4%", trend: "up" },
+      { label: "Volumen negociado", value: "78.500", delta: "+4,1%", trend: "up" },
+      { label: "Solicitudes sin cobertura", value: "6", delta: "-2", trend: "down" },
+      { label: "Cargas sin transporte", value: "3", delta: "-1", trend: "down" },
+    ],
     activitySeries: [
       { label: "08h", solicitudes: 4, ofertas: 18, operaciones: 1 },
       { label: "10h", solicitudes: 7, ofertas: 26, operaciones: 2 },
@@ -262,6 +268,12 @@ const DASHBOARD_BY_PERIOD: Record<PeriodKey, DashboardData> = {
       { label: "Solicitudes abiertas", value: "71", delta: "+11", trend: "up" },
       { label: "Operaciones activas", value: "29", delta: "+5", trend: "up" },
       { label: "Comisión estimada", value: "USD 46.900", delta: "+8,1%", trend: "up" },
+    ],
+    operationalMetrics: [
+      { label: "Ofertas recibidas", value: "582", delta: "+7,2%", trend: "up" },
+      { label: "Volumen negociado", value: "236.500", delta: "+6,4%", trend: "up" },
+      { label: "Solicitudes sin cobertura", value: "13", delta: "-3", trend: "down" },
+      { label: "Cargas sin transporte", value: "7", delta: "-1", trend: "down" },
     ],
     activitySeries: [
       { label: "Lun", solicitudes: 18, ofertas: 64, operaciones: 7 },
@@ -421,6 +433,12 @@ const DASHBOARD_BY_PERIOD: Record<PeriodKey, DashboardData> = {
       { label: "Operaciones activas", value: "84", delta: "+12", trend: "up" },
       { label: "Comisión estimada", value: "USD 168.700", delta: "+13,2%", trend: "up" },
     ],
+    operationalMetrics: [
+      { label: "Ofertas recibidas", value: "1.104", delta: "+10,1%", trend: "up" },
+      { label: "Volumen negociado", value: "742.500", delta: "+9,8%", trend: "up" },
+      { label: "Solicitudes sin cobertura", value: "35", delta: "-6", trend: "down" },
+      { label: "Cargas sin transporte", value: "18", delta: "-2", trend: "down" },
+    ],
     activitySeries: [
       { label: "S1", solicitudes: 72, ofertas: 246, operaciones: 26 },
       { label: "S2", solicitudes: 81, ofertas: 279, operaciones: 31 },
@@ -575,6 +593,12 @@ const DASHBOARD_BY_PERIOD: Record<PeriodKey, DashboardData> = {
       { label: "Solicitudes abiertas", value: "602", delta: "+74", trend: "up" },
       { label: "Operaciones activas", value: "228", delta: "+31", trend: "up" },
       { label: "Comisión estimada", value: "USD 492.300", delta: "+18,4%", trend: "up" },
+    ],
+    operationalMetrics: [
+      { label: "Ofertas recibidas", value: "2.525", delta: "+12,6%", trend: "up" },
+      { label: "Volumen negociado", value: "2.074.000", delta: "+11,8%", trend: "up" },
+      { label: "Solicitudes sin cobertura", value: "91", delta: "-11", trend: "down" },
+      { label: "Cargas sin transporte", value: "37", delta: "-4", trend: "down" },
     ],
     activitySeries: [
       { label: "M1", solicitudes: 218, ofertas: 752, operaciones: 82 },
