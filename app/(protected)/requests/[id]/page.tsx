@@ -371,4 +371,4 @@ export default function RequestDetailPage() {
       </div>
     </section>
   );
-}
+}  
