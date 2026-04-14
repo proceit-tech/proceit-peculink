@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearMockSession, getMockSession } from "@/lib/mock/session";
 
@@ -7,46 +8,105 @@ export default function ProtectedTopbar() {
   const router = useRouter();
   const session = getMockSession();
 
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
   function handleLogout() {
     clearMockSession();
     router.push("/login");
   }
 
-  return (
-    <header className="border-b border-white/10 bg-[rgba(5,7,10,0.72)] backdrop-blur">
-      <div className="mx-auto flex h-[64px] max-w-7xl items-center justify-between px-6">
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-cyan-400/80">
-            Panel
-          </p>
-          <h1 className="mt-1 truncate text-[15px] font-semibold tracking-tight text-white">
-            Control operativo
-          </h1>
-        </div>
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!dropdownRef.current) return;
+      if (!dropdownRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
 
-        <div className="flex items-center">
-          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-            <div className="hidden min-w-0 md:block">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/35">
-                Empresa
-              </p>
-              <p className="mt-0.5 max-w-[180px] truncate text-sm font-medium text-white/85">
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <header className="border-b border-white/10 bg-[rgba(5,7,10,0.68)] backdrop-blur-xl">
+      <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-end px-6">
+        <div className="relative" ref={dropdownRef}>
+          <button
+            type="button"
+            onClick={() => setOpen((prev) => !prev)}
+            className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 transition hover:border-white/15 hover:bg-white/[0.06]"
+          >
+            <div className="text-right">
+              <p className="max-w-[220px] truncate text-sm font-semibold text-white">
                 {session?.company ?? "PecuLink Platform"}
               </p>
             </div>
 
-            <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-[12px] font-semibold text-white">
-              {getRoleLabel(session?.role)}
-            </div>
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-[12px] font-medium text-white/75 transition hover:bg-white/10 hover:text-white"
+            <div
+              className={[
+                "text-white/45 transition-transform duration-200",
+                open ? "rotate-180" : "",
+              ].join(" ")}
             >
-              Salir
-            </button>
-          </div>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M5 7.5L10 12.5L15 7.5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          </button>
+
+          {open ? (
+            <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-[260px] rounded-2xl border border-white/10 bg-[#0B1015] p-2 shadow-[0_25px_80px_rgba(0,0,0,0.45)]">
+              <div className="rounded-xl border border-white/6 bg-white/[0.03] px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-white/35">
+                  Empresa
+                </p>
+                <p className="mt-1 text-sm font-semibold text-white">
+                  {session?.company ?? "PecuLink Platform"}
+                </p>
+                <p className="mt-1 text-xs text-white/45">
+                  {getRoleLabel(session?.role)}
+                </p>
+              </div>
+
+              <div className="my-2 h-px bg-white/6" />
+
+              <button
+                type="button"
+                className="flex w-full items-center rounded-xl px-4 py-3 text-left text-sm font-medium text-white/78 transition hover:bg-white/[0.05] hover:text-white"
+              >
+                Perfil
+              </button>
+
+              <button
+                type="button"
+                className="flex w-full items-center rounded-xl px-4 py-3 text-left text-sm font-medium text-white/78 transition hover:bg-white/[0.05] hover:text-white"
+              >
+                Plan
+              </button>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="mt-1 flex w-full items-center rounded-xl px-4 py-3 text-left text-sm font-medium text-red-200/90 transition hover:bg-red-400/10 hover:text-red-100"
+              >
+                Salir
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </header>

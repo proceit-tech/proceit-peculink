@@ -15,20 +15,21 @@ export default function ProtectedSidebar() {
   const menu = useMemo(() => menuByRole[role], [role]);
 
   return (
-    <aside className="w-[236px] shrink-0 border-r border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] backdrop-blur">
+    <aside className="w-[248px] shrink-0 border-r border-white/10 bg-[linear-gradient(180deg,#0a0f14_0%,#06090d_100%)]">
       <div className="flex h-full flex-col">
-        <div className="border-b border-white/10 px-5 py-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-cyan-400/80">
-            Marketplace ganadero
-          </p>
-
-          <h1 className="mt-2 text-[17px] font-semibold tracking-[-0.03em] text-white">
-            PecuLink
-          </h1>
+        <div className="px-6 pb-6 pt-7">
+          <div className="inline-flex flex-col">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.38em] text-cyan-400/85">
+              Marketplace ganadero
+            </span>
+            <span className="mt-3 text-[30px] font-semibold leading-none tracking-[-0.04em] text-white">
+              PecuLink
+            </span>
+          </div>
         </div>
 
-        <div className="flex-1 px-3 py-4">
-          <nav className="space-y-1">
+        <div className="border-t border-white/6 px-3 pt-4">
+          <nav className="space-y-1.5">
             {menu.map((item) => {
               const active = pathname === item.href;
 
@@ -37,22 +38,29 @@ export default function ProtectedSidebar() {
                   key={item.href}
                   href={item.href}
                   className={[
-                    "group relative flex items-center rounded-xl px-3 py-2.5 text-[13.5px] font-medium transition-all duration-200",
+                    "group relative flex items-center rounded-2xl px-4 py-3 text-[14px] font-medium transition-all duration-200",
                     active
-                      ? "bg-cyan-400/10 text-white"
-                      : "text-white/62 hover:bg-white/5 hover:text-white",
+                      ? "bg-white/[0.06] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                      : "text-white/52 hover:bg-white/[0.04] hover:text-white",
                   ].join(" ")}
                 >
                   <span
                     className={[
-                      "absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full transition-all duration-200",
+                      "absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full transition-all duration-200",
                       active
-                        ? "bg-cyan-400 opacity-100"
-                        : "bg-transparent opacity-0 group-hover:opacity-60",
+                        ? "bg-cyan-400 opacity-100 shadow-[0_0_14px_rgba(34,211,238,0.45)]"
+                        : "bg-transparent opacity-0",
                     ].join(" ")}
                   />
 
-                  <span className="pl-2">{item.label}</span>
+                  <span
+                    className={[
+                      "transition-all duration-200",
+                      active ? "translate-x-1" : "group-hover:translate-x-0.5",
+                    ].join(" ")}
+                  >
+                    {item.label}
+                  </span>
                 </Link>
               );
             })}
