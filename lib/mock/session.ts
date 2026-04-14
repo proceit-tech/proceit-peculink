@@ -3,13 +3,12 @@
 import type { UserRole } from "@/lib/mock/users";
 
 export type MockSession = {
-  id: string;
+  id?: string;
   name: string;
   company: string;
   email: string;
   role: UserRole;
 
-  // preparação enterprise
   tenantId?: string;
   permissions?: string[];
 };
@@ -19,7 +18,7 @@ const STORAGE_KEY = "peculink_mock_session";
 export function setMockSession(session: MockSession) {
   if (typeof window === "undefined") return;
 
-  const payload: MockSession = {
+  const payload: Required<Pick<MockSession, "id">> & Omit<MockSession, "id"> = {
     ...session,
     id: session.id ?? crypto.randomUUID(),
   };
@@ -50,10 +49,6 @@ export function clearMockSession() {
   window.localStorage.removeItem(STORAGE_KEY);
 }
 
-/**
- * 🔥 EXTRA (IMPORTANTE)
- * permite simular troca de perfil sem logout
- */
 export function switchMockRole(role: UserRole) {
   const current = getMockSession();
   if (!current) return;
