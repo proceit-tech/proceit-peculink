@@ -59,6 +59,7 @@ type DashboardData = {
     description: string;
   };
   coreMetrics: Metric[];
+  operationalMetrics: Metric[];
   activitySeries: Array<{
     label: string;
     solicitudes: number;
