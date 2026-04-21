@@ -6,30 +6,79 @@ type Action =
   | "moveToActive"
   | "readAccess";
 
-const CONNECTOR_URL = "https://petite-wings-grab.loca.lt";
+const CONNECTOR_URL = "https://chilly-grapes-look.loca.lt";
 
 type Body = {
   action: Action;
   payload?: any;
 };
 
+function logStep(step: string, data?: any) {
+  if (data === undefined) {
+    console.log(`[IDFACE] ${step}`);
+    return;
+  }
+
+  try {
+    console.log(`[IDFACE] ${step}`, JSON.stringify(data, null, 2));
+  } catch {
+    console.log(`[IDFACE] ${step}`, data);
+  }
+}
+
+async function safeReadJsonResponse(response: Response, label: string) {
+  const text = await response.text();
+
+  logStep(`${label} -> HTTP STATUS`, response.status);
+  logStep(`${label} -> RAW RESPONSE`, text);
+
+  if (!text || !text.trim()) {
+    throw new Error(`${label}: resposta vazia`);
+  }
+
+  try {
+    const parsed = JSON.parse(text);
+    logStep(`${label} -> PARSED RESPONSE`, parsed);
+    return parsed;
+  } catch {
+    throw new Error(`${label}: resposta inválida: ${text}`);
+  }
+}
+
 async function connectorJson(path: string, body: any) {
+  const requestBody = {
+    path,
+    body,
+  };
+
+  logStep("connectorJson -> REQUEST", {
+    url: `${CONNECTOR_URL}/device/json`,
+    requestBody,
+  });
+
   const response = await fetch(`${CONNECTOR_URL}/device/json`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      path,
-      body,
-    }),
+    body: JSON.stringify(requestBody),
     cache: "no-store",
   });
 
-  return response.json();
+  return safeReadJsonResponse(response, "connectorJson");
 }
 
 async function connectorImage(userId: number, photoBase64: string) {
+  const requestBody = {
+    userId,
+    photoBase64Length: photoBase64?.length ?? 0,
+  };
+
+  logStep("connectorImage -> REQUEST", {
+    url: `${CONNECTOR_URL}/device/image`,
+    requestBody,
+  });
+
   const response = await fetch(`${CONNECTOR_URL}/device/image`, {
     method: "POST",
     headers: {
@@ -42,7 +91,7 @@ async function connectorImage(userId: number, photoBase64: string) {
     cache: "no-store",
   });
 
-  return response.json();
+  return safeReadJsonResponse(response, "connectorImage");
 }
 
 function getRows(data: any): any[] {
@@ -56,40 +105,66 @@ function getRows(data: any): any[] {
 }
 
 async function loadObject(object: string) {
+  logStep("loadObject -> START", { object });
+
   const result = await connectorJson("/load_objects.fcgi", { object });
 
+  logStep("loadObject -> CONNECTOR RESULT", result);
+
   if (!result.success) {
-    throw new Error(result.error || "Falha ao carregar objeto");
+    throw new Error(
+      `Falha ao carregar objeto ${object}: ${result.error || result.raw || "sem detalhe"}`
+    );
   }
+
+  const rows = getRows(result.data);
+
+  logStep("loadObject -> EXTRACTED ROWS", {
+    object,
+    count: rows.length,
+    rows,
+  });
 
   return {
     raw: result.raw,
     data: result.data,
-    rows: getRows(result.data),
+    rows,
   };
 }
 
 async function createObject(object: string, values: any[]) {
+  logStep("createObject -> START", { object, values });
+
   const result = await connectorJson("/create_objects.fcgi", {
     object,
     values,
   });
 
+  logStep("createObject -> CONNECTOR RESULT", result);
+
   if (!result.success) {
-    throw new Error(result.error || `Falha ao criar ${object}`);
+    throw new Error(
+      `Falha ao criar ${object}: ${result.error || result.raw || "sem detalhe"}`
+    );
   }
 
   return result.data;
 }
 
 async function destroyObject(object: string, where: any) {
+  logStep("destroyObject -> START", { object, where });
+
   const result = await connectorJson("/destroy_objects.fcgi", {
     object,
     where,
   });
 
+  logStep("destroyObject -> CONNECTOR RESULT", result);
+
   if (!result.success) {
-    throw new Error(result.error || `Falha ao apagar ${object}`);
+    throw new Error(
+      `Falha ao apagar ${object}: ${result.error || result.raw || "sem detalhe"}`
+    );
   }
 
   return result.data;
@@ -105,15 +180,39 @@ function sortByTimeAsc(rows: any[]) {
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as Body;
+    const textBody = await req.text();
+    logStep("POST /api/idface -> RAW REQUEST BODY", textBody);
+
+    let body: Body;
+
+    try {
+      body = JSON.parse(textBody);
+    } catch {
+      return Response.json(
+        {
+          success: false,
+          error: `Body inválido: ${textBody}`,
+        },
+        { status: 400 }
+      );
+    }
+
     const { action, payload } = body;
+
+    logStep("POST /api/idface -> PARSED BODY", body);
 
     if (action === "createActiveGroup") {
       const name = normalizeName(payload?.groupName || "ALUNOS_ATIVOS");
+
+      logStep("ACTION createActiveGroup -> START", { name });
+
       const groups = await loadObject("groups");
+
       const found = groups.rows.find((row) => normalizeName(row.name) === name);
 
       if (found) {
+        logStep("ACTION createActiveGroup -> GROUP EXISTS", found);
+
         return Response.json({
           success: true,
           groupId: Number(found.id),
@@ -123,6 +222,8 @@ export async function POST(req: Request) {
       }
 
       const created = await createObject("groups", [{ name }]);
+
+      logStep("ACTION createActiveGroup -> GROUP CREATED", created);
 
       return Response.json({
         success: true,
@@ -134,10 +235,16 @@ export async function POST(req: Request) {
 
     if (action === "createBlockedGroup") {
       const name = normalizeName(payload?.groupName || "ALUNOS_BLOQUEADOS");
+
+      logStep("ACTION createBlockedGroup -> START", { name });
+
       const groups = await loadObject("groups");
+
       const found = groups.rows.find((row) => normalizeName(row.name) === name);
 
       if (found) {
+        logStep("ACTION createBlockedGroup -> GROUP EXISTS", found);
+
         return Response.json({
           success: true,
           groupId: Number(found.id),
@@ -147,6 +254,8 @@ export async function POST(req: Request) {
       }
 
       const created = await createObject("groups", [{ name }]);
+
+      logStep("ACTION createBlockedGroup -> GROUP CREATED", created);
 
       return Response.json({
         success: true,
@@ -161,6 +270,13 @@ export async function POST(req: Request) {
       const registration = normalizeName(payload?.registration);
       const photoBase64 = normalizeName(payload?.photoBase64);
       const activeGroupId = Number(payload?.activeGroupId);
+
+      logStep("ACTION createUser -> START", {
+        name,
+        registration,
+        activeGroupId,
+        photoBase64Length: photoBase64.length,
+      });
 
       if (!name) {
         return Response.json({ success: false, error: "Nome obrigatório" }, { status: 400 });
@@ -179,6 +295,7 @@ export async function POST(req: Request) {
       }
 
       const users = await loadObject("users");
+
       const existing = users.rows.find(
         (row) => normalizeName(row.registration) === registration
       );
@@ -187,6 +304,7 @@ export async function POST(req: Request) {
 
       if (existing) {
         userId = Number(existing.id);
+        logStep("ACTION createUser -> USER EXISTS", existing);
       } else {
         const created = await createObject("users", [
           {
@@ -195,10 +313,15 @@ export async function POST(req: Request) {
             password: "",
           },
         ]);
+
+        logStep("ACTION createUser -> USER CREATED", created);
+
         userId = Number(created.ids[0]);
       }
 
       const imageResult = await connectorImage(userId, photoBase64);
+
+      logStep("ACTION createUser -> IMAGE RESULT", imageResult);
 
       if (!imageResult.success) {
         return Response.json({
@@ -222,12 +345,19 @@ export async function POST(req: Request) {
         },
       });
 
+      logStep("ACTION createUser -> REMOVED OLD GROUP LINKS", { userId });
+
       await createObject("user_groups", [
         {
           user_id: userId,
           group_id: activeGroupId,
         },
       ]);
+
+      logStep("ACTION createUser -> LINKED USER TO ACTIVE GROUP", {
+        userId,
+        activeGroupId,
+      });
 
       return Response.json({
         success: true,
@@ -243,6 +373,12 @@ export async function POST(req: Request) {
       const targetGroupId = Number(payload?.targetGroupId);
       const targetGroupName = normalizeName(payload?.targetGroupName);
 
+      logStep(`ACTION ${action} -> START`, {
+        userId,
+        targetGroupId,
+        targetGroupName,
+      });
+
       if (!userId) {
         return Response.json({ success: false, error: "userId obrigatório" }, { status: 400 });
       }
@@ -257,12 +393,20 @@ export async function POST(req: Request) {
         },
       });
 
+      logStep(`ACTION ${action} -> REMOVED OLD GROUP LINKS`, { userId });
+
       await createObject("user_groups", [
         {
           user_id: userId,
           group_id: targetGroupId,
         },
       ]);
+
+      logStep(`ACTION ${action} -> LINKED USER TO GROUP`, {
+        userId,
+        targetGroupId,
+        targetGroupName,
+      });
 
       return Response.json({
         success: true,
@@ -275,14 +419,23 @@ export async function POST(req: Request) {
     if (action === "readAccess") {
       const userId = Number(payload?.userId);
 
+      logStep("ACTION readAccess -> START", { userId });
+
       if (!userId) {
         return Response.json({ success: false, error: "userId obrigatório" }, { status: 400 });
       }
 
       const logs = await loadObject("access_logs");
+
       const userLogs = sortByTimeAsc(
         logs.rows.filter((row) => Number(row.user_id) === userId)
       );
+
+      logStep("ACTION readAccess -> USER LOGS", {
+        userId,
+        count: userLogs.length,
+        userLogs,
+      });
 
       const history = userLogs.map((row, index) => {
         const sequence = index + 1;
@@ -300,6 +453,12 @@ export async function POST(req: Request) {
 
       const last = history.length > 0 ? history[history.length - 1] : null;
 
+      logStep("ACTION readAccess -> RESOLVED HISTORY", {
+        totalReads: history.length,
+        lastMovement: last,
+        history,
+      });
+
       return Response.json({
         success: true,
         totalReads: history.length,
@@ -313,6 +472,11 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   } catch (error: any) {
+    logStep("POST /api/idface -> ERROR", {
+      message: error?.message || String(error),
+      stack: error?.stack || null,
+    });
+
     return Response.json(
       {
         success: false,
