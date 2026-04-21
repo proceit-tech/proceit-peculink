@@ -36,6 +36,19 @@ function formatUnixTime(unix: number) {
   return new Date(unix * 1000).toLocaleString("es-PY");
 }
 
+function logUi(step: string, data?: any) {
+  if (data === undefined) {
+    console.log(`[IDFACE-UI] ${step}`);
+    return;
+  }
+
+  try {
+    console.log(`[IDFACE-UI] ${step}`, JSON.stringify(data, null, 2));
+  } catch {
+    console.log(`[IDFACE-UI] ${step}`, data);
+  }
+}
+
 export default function IdFaceTestPage() {
   const [name, setName] = useState("");
   const [registration, setRegistration] = useState("");
@@ -61,6 +74,8 @@ export default function IdFaceTestPage() {
   }, [file]);
 
   async function callApi(action: string, payload?: any) {
+    logUi("callApi -> REQUEST", { action, payload });
+
     const response = await fetch("/api/idface", {
       method: "POST",
       headers: {
@@ -69,15 +84,26 @@ export default function IdFaceTestPage() {
       body: JSON.stringify({ action, payload }),
     });
 
-    return response.json();
+    const text = await response.text();
+
+    logUi("callApi -> RAW RESPONSE", {
+      status: response.status,
+      text,
+    });
+
+    try {
+      const json = JSON.parse(text);
+      logUi("callApi -> PARSED RESPONSE", json);
+      return json;
+    } catch {
+      throw new Error(`Resposta inválida da API: ${text}`);
+    }
   }
 
-  async function handleCreateActiveGroup() {
+  async function handleCreateActiveStructure() {
     setLoading(true);
     try {
-      const data = await callApi("createActiveGroup", {
-        groupName: "ALUNOS_ATIVOS",
-      });
+      const data = await callApi("createActiveStructure");
 
       setResult(data);
 
@@ -89,12 +115,10 @@ export default function IdFaceTestPage() {
     }
   }
 
-  async function handleCreateBlockedGroup() {
+  async function handleCreateBlockedStructure() {
     setLoading(true);
     try {
-      const data = await callApi("createBlockedGroup", {
-        groupName: "ALUNOS_BLOQUEADOS",
-      });
+      const data = await callApi("createBlockedStructure");
 
       setResult(data);
 
@@ -123,7 +147,7 @@ export default function IdFaceTestPage() {
     }
 
     if (!activeGroupId) {
-      alert("Crie o grupo ativo primeiro");
+      alert("Crie a estrutura ativa primeiro");
       return;
     }
 
@@ -142,7 +166,7 @@ export default function IdFaceTestPage() {
 
       if (data.success) {
         setUserId(data.userId);
-        setCurrentGroupName("ATIVOS");
+        setCurrentGroupName("ALUNOS_ATIVOS");
         setMensalidade("PAGA");
       }
     } finally {
@@ -157,7 +181,7 @@ export default function IdFaceTestPage() {
     }
 
     if (!blockedGroupId) {
-      alert("Crie o grupo bloqueado primeiro");
+      alert("Crie a estrutura bloqueada primeiro");
       return;
     }
 
@@ -166,13 +190,13 @@ export default function IdFaceTestPage() {
       const data = await callApi("moveToBlocked", {
         userId,
         targetGroupId: blockedGroupId,
-        targetGroupName: "BLOQUEADOS",
+        targetGroupName: "ALUNOS_BLOQUEADOS",
       });
 
       setResult(data);
 
       if (data.success) {
-        setCurrentGroupName("BLOQUEADOS");
+        setCurrentGroupName("ALUNOS_BLOQUEADOS");
         setMensalidade("BLOQUEADA");
       }
     } finally {
@@ -187,7 +211,7 @@ export default function IdFaceTestPage() {
     }
 
     if (!activeGroupId) {
-      alert("Crie o grupo ativo primeiro");
+      alert("Crie a estrutura ativa primeiro");
       return;
     }
 
@@ -196,13 +220,13 @@ export default function IdFaceTestPage() {
       const data = await callApi("moveToActive", {
         userId,
         targetGroupId: activeGroupId,
-        targetGroupName: "ATIVOS",
+        targetGroupName: "ALUNOS_ATIVOS",
       });
 
       setResult(data);
 
       if (data.success) {
-        setCurrentGroupName("ATIVOS");
+        setCurrentGroupName("ALUNOS_ATIVOS");
         setMensalidade("PAGA");
       }
     } finally {
@@ -243,8 +267,8 @@ export default function IdFaceTestPage() {
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
         <h1 style={{ fontSize: 46, marginBottom: 10 }}>Teste iDFace</h1>
         <p style={{ opacity: 0.75, marginBottom: 24, fontSize: 18 }}>
-          Simulação completa: grupos, cadastro, bloqueio de mensalidade e leitura
-          de entrada/saída por paridade.
+          Simulação completa: estruturas de acesso, cadastro, bloqueio de mensalidade
+          e leitura de entrada/saída por paridade.
         </p>
 
         <div
@@ -293,11 +317,11 @@ export default function IdFaceTestPage() {
             </div>
 
             <div style={{ display: "grid", gap: 12 }}>
-              <button onClick={handleCreateActiveGroup} disabled={loading} style={buttonStyle("#2563eb")}>
+              <button onClick={handleCreateActiveStructure} disabled={loading} style={buttonStyle("#2563eb")}>
                 Criar grupo ativo
               </button>
 
-              <button onClick={handleCreateBlockedGroup} disabled={loading} style={buttonStyle("#7c3aed")}>
+              <button onClick={handleCreateBlockedStructure} disabled={loading} style={buttonStyle("#7c3aed")}>
                 Criar grupo bloqueado
               </button>
 
@@ -306,9 +330,11 @@ export default function IdFaceTestPage() {
               </button>
             </div>
 
-            <div style={{ marginTop: 20, fontSize: 14, opacity: 0.85 }}>
-              <div>Grupo ativo ID: {activeGroupId ?? "-"}</div>
-              <div>Grupo bloqueado ID: {blockedGroupId ?? "-"}</div>
+            <div style={{ marginTop: 20, fontSize: 14, opacity: 0.9, lineHeight: 1.8 }}>
+              <div>Estrutura ativa ID: {activeGroupId ?? "-"}</div>
+              <div>Estrutura bloqueada ID: {blockedGroupId ?? "-"}</div>
+              <div>Horário normal: 04:00 → 23:59</div>
+              <div>Horário bloqueio: 03:00 → 03:05</div>
             </div>
           </section>
 
@@ -387,7 +413,7 @@ export default function IdFaceTestPage() {
                 background: "#0b1435",
                 borderRadius: 16,
                 padding: 16,
-                minHeight: 180,
+                minHeight: 200,
                 marginBottom: 16,
                 overflow: "auto",
               }}

@@ -1,12 +1,33 @@
 type Action =
-  | "createActiveGroup"
-  | "createBlockedGroup"
+  | "createActiveStructure"
+  | "createBlockedStructure"
   | "createUser"
   | "moveToBlocked"
   | "moveToActive"
   | "readAccess";
 
 const CONNECTOR_URL = "https://pipes-richmond-european-miss.trycloudflare.com";
+
+// AJUSTE AQUI SE O PORTAL DO EQUIPAMENTO NÃO FOR 1
+const PORTAL_ID = 1;
+
+// HORÁRIOS OFICIAIS
+const ACTIVE_GROUP_NAME = "ALUNOS_ATIVOS";
+const BLOCKED_GROUP_NAME = "ALUNOS_BLOQUEADOS";
+
+const ACTIVE_RULE_NAME = "REGRA_ALUNOS_ATIVOS";
+const BLOCKED_RULE_NAME = "REGRA_ALUNOS_BLOQUEADOS";
+
+const ACTIVE_TIMEZONE_NAME = "HORARIO_NORMAL";
+const BLOCKED_TIMEZONE_NAME = "HORARIO_BLOQUEIO";
+
+// 04:00 -> 23:59
+const ACTIVE_START_SECONDS = 4 * 3600; // 14400
+const ACTIVE_END_SECONDS = 23 * 3600 + 59 * 60; // 86340
+
+// 03:00 -> 03:05
+const BLOCKED_START_SECONDS = 3 * 3600; // 10800
+const BLOCKED_END_SECONDS = 3 * 3600 + 5 * 60; // 11100
 
 type Body = {
   action: Action;
@@ -104,6 +125,14 @@ function getRows(data: any): any[] {
   return [];
 }
 
+function normalizeName(value: any) {
+  return String(value || "").trim();
+}
+
+function sortByTimeAsc(rows: any[]) {
+  return [...rows].sort((a, b) => Number(a.time || 0) - Number(b.time || 0));
+}
+
 async function loadObject(object: string) {
   logStep("loadObject -> START", { object });
 
@@ -170,12 +199,243 @@ async function destroyObject(object: string, where: any) {
   return result.data;
 }
 
-function normalizeName(value: any) {
-  return String(value || "").trim();
+async function ensureGroup(name: string) {
+  const groups = await loadObject("groups");
+  const found = groups.rows.find((row) => normalizeName(row.name) === name);
+
+  if (found) {
+    logStep("ensureGroup -> EXISTS", found);
+    return Number(found.id);
+  }
+
+  const created = await createObject("groups", [{ name }]);
+  logStep("ensureGroup -> CREATED", created);
+  return Number(created.ids[0]);
 }
 
-function sortByTimeAsc(rows: any[]) {
-  return [...rows].sort((a, b) => Number(a.time || 0) - Number(b.time || 0));
+async function ensureAccessRule(name: string) {
+  const rules = await loadObject("access_rules");
+  const found = rules.rows.find((row) => normalizeName(row.name) === name);
+
+  if (found) {
+    logStep("ensureAccessRule -> EXISTS", found);
+    return Number(found.id);
+  }
+
+  const created = await createObject("access_rules", [
+    {
+      name,
+      type: 1,
+      priority: 0,
+    },
+  ]);
+
+  logStep("ensureAccessRule -> CREATED", created);
+  return Number(created.ids[0]);
+}
+
+async function ensureTimeZone(name: string) {
+  const zones = await loadObject("time_zones");
+  const found = zones.rows.find((row) => normalizeName(row.name) === name);
+
+  if (found) {
+    logStep("ensureTimeZone -> EXISTS", found);
+    return Number(found.id);
+  }
+
+  const created = await createObject("time_zones", [{ name }]);
+  logStep("ensureTimeZone -> CREATED", created);
+  return Number(created.ids[0]);
+}
+
+async function ensureTimeSpan(params: {
+  timeZoneId: number;
+  start: number;
+  end: number;
+}) {
+  const spans = await loadObject("time_spans");
+
+  const found = spans.rows.find(
+    (row) =>
+      Number(row.time_zone_id) === Number(params.timeZoneId) &&
+      Number(row.start) === Number(params.start) &&
+      Number(row.end) === Number(params.end) &&
+      Number(row.sun) === 1 &&
+      Number(row.mon) === 1 &&
+      Number(row.tue) === 1 &&
+      Number(row.wed) === 1 &&
+      Number(row.thu) === 1 &&
+      Number(row.fri) === 1 &&
+      Number(row.sat) === 1
+  );
+
+  if (found) {
+    logStep("ensureTimeSpan -> EXISTS", found);
+    return Number(found.id);
+  }
+
+  const created = await createObject("time_spans", [
+    {
+      time_zone_id: params.timeZoneId,
+      start: params.start,
+      end: params.end,
+      sun: 1,
+      mon: 1,
+      tue: 1,
+      wed: 1,
+      thu: 1,
+      fri: 1,
+      sat: 1,
+      hol1: 1,
+      hol2: 1,
+      hol3: 1,
+    },
+  ]);
+
+  logStep("ensureTimeSpan -> CREATED", created);
+  return Number(created.ids[0]);
+}
+
+async function ensureLink(params: {
+  object: string;
+  values: any;
+  matcher: (row: any) => boolean;
+}) {
+  const rows = await loadObject(params.object);
+  const found = rows.rows.find(params.matcher);
+
+  if (found) {
+    logStep(`ensureLink -> EXISTS (${params.object})`, found);
+    return found;
+  }
+
+  const created = await createObject(params.object, [params.values]);
+  logStep(`ensureLink -> CREATED (${params.object})`, created);
+  return created;
+}
+
+async function createActiveStructure() {
+  logStep("createActiveStructure -> START");
+
+  const groupId = await ensureGroup(ACTIVE_GROUP_NAME);
+  const ruleId = await ensureAccessRule(ACTIVE_RULE_NAME);
+  const timeZoneId = await ensureTimeZone(ACTIVE_TIMEZONE_NAME);
+
+  await ensureTimeSpan({
+    timeZoneId,
+    start: ACTIVE_START_SECONDS,
+    end: ACTIVE_END_SECONDS,
+  });
+
+  await ensureLink({
+    object: "access_rule_time_zones",
+    values: {
+      access_rule_id: ruleId,
+      time_zone_id: timeZoneId,
+    },
+    matcher: (row) =>
+      Number(row.access_rule_id) === ruleId &&
+      Number(row.time_zone_id) === timeZoneId,
+  });
+
+  await ensureLink({
+    object: "group_access_rules",
+    values: {
+      group_id: groupId,
+      access_rule_id: ruleId,
+    },
+    matcher: (row) =>
+      Number(row.group_id) === groupId &&
+      Number(row.access_rule_id) === ruleId,
+  });
+
+  await ensureLink({
+    object: "portal_access_rules",
+    values: {
+      portal_id: PORTAL_ID,
+      access_rule_id: ruleId,
+    },
+    matcher: (row) =>
+      Number(row.portal_id) === PORTAL_ID &&
+      Number(row.access_rule_id) === ruleId,
+  });
+
+  return {
+    groupId,
+    groupName: ACTIVE_GROUP_NAME,
+    ruleId,
+    ruleName: ACTIVE_RULE_NAME,
+    timeZoneId,
+    timeZoneName: ACTIVE_TIMEZONE_NAME,
+    window: {
+      from: "04:00",
+      to: "23:59",
+      startSeconds: ACTIVE_START_SECONDS,
+      endSeconds: ACTIVE_END_SECONDS,
+    },
+  };
+}
+
+async function createBlockedStructure() {
+  logStep("createBlockedStructure -> START");
+
+  const groupId = await ensureGroup(BLOCKED_GROUP_NAME);
+  const ruleId = await ensureAccessRule(BLOCKED_RULE_NAME);
+  const timeZoneId = await ensureTimeZone(BLOCKED_TIMEZONE_NAME);
+
+  await ensureTimeSpan({
+    timeZoneId,
+    start: BLOCKED_START_SECONDS,
+    end: BLOCKED_END_SECONDS,
+  });
+
+  await ensureLink({
+    object: "access_rule_time_zones",
+    values: {
+      access_rule_id: ruleId,
+      time_zone_id: timeZoneId,
+    },
+    matcher: (row) =>
+      Number(row.access_rule_id) === ruleId &&
+      Number(row.time_zone_id) === timeZoneId,
+  });
+
+  await ensureLink({
+    object: "group_access_rules",
+    values: {
+      group_id: groupId,
+      access_rule_id: ruleId,
+    },
+    matcher: (row) =>
+      Number(row.group_id) === groupId &&
+      Number(row.access_rule_id) === ruleId,
+  });
+
+  await ensureLink({
+    object: "portal_access_rules",
+    values: {
+      portal_id: PORTAL_ID,
+      access_rule_id: ruleId,
+    },
+    matcher: (row) =>
+      Number(row.portal_id) === PORTAL_ID &&
+      Number(row.access_rule_id) === ruleId,
+  });
+
+  return {
+    groupId,
+    groupName: BLOCKED_GROUP_NAME,
+    ruleId,
+    ruleName: BLOCKED_RULE_NAME,
+    timeZoneId,
+    timeZoneName: BLOCKED_TIMEZONE_NAME,
+    window: {
+      from: "03:00",
+      to: "03:05",
+      startSeconds: BLOCKED_START_SECONDS,
+      endSeconds: BLOCKED_END_SECONDS,
+    },
+  };
 }
 
 export async function POST(req: Request) {
@@ -201,67 +461,21 @@ export async function POST(req: Request) {
 
     logStep("POST /api/idface -> PARSED BODY", body);
 
-    if (action === "createActiveGroup") {
-      const name = normalizeName(payload?.groupName || "ALUNOS_ATIVOS");
-
-      logStep("ACTION createActiveGroup -> START", { name });
-
-      const groups = await loadObject("groups");
-
-      const found = groups.rows.find((row) => normalizeName(row.name) === name);
-
-      if (found) {
-        logStep("ACTION createActiveGroup -> GROUP EXISTS", found);
-
-        return Response.json({
-          success: true,
-          groupId: Number(found.id),
-          groupName: name,
-          existed: true,
-        });
-      }
-
-      const created = await createObject("groups", [{ name }]);
-
-      logStep("ACTION createActiveGroup -> GROUP CREATED", created);
+    if (action === "createActiveStructure") {
+      const structure = await createActiveStructure();
 
       return Response.json({
         success: true,
-        groupId: Number(created.ids[0]),
-        groupName: name,
-        existed: false,
+        ...structure,
       });
     }
 
-    if (action === "createBlockedGroup") {
-      const name = normalizeName(payload?.groupName || "ALUNOS_BLOQUEADOS");
-
-      logStep("ACTION createBlockedGroup -> START", { name });
-
-      const groups = await loadObject("groups");
-
-      const found = groups.rows.find((row) => normalizeName(row.name) === name);
-
-      if (found) {
-        logStep("ACTION createBlockedGroup -> GROUP EXISTS", found);
-
-        return Response.json({
-          success: true,
-          groupId: Number(found.id),
-          groupName: name,
-          existed: true,
-        });
-      }
-
-      const created = await createObject("groups", [{ name }]);
-
-      logStep("ACTION createBlockedGroup -> GROUP CREATED", created);
+    if (action === "createBlockedStructure") {
+      const structure = await createBlockedStructure();
 
       return Response.json({
         success: true,
-        groupId: Number(created.ids[0]),
-        groupName: name,
-        existed: false,
+        ...structure,
       });
     }
 
@@ -291,7 +505,10 @@ export async function POST(req: Request) {
       }
 
       if (!activeGroupId) {
-        return Response.json({ success: false, error: "Crie o grupo ativo antes" }, { status: 400 });
+        return Response.json(
+          { success: false, error: "Crie a estrutura ativa antes" },
+          { status: 400 }
+        );
       }
 
       const users = await loadObject("users");
@@ -363,7 +580,7 @@ export async function POST(req: Request) {
         success: true,
         userId,
         currentGroupId: activeGroupId,
-        currentGroupName: "ATIVOS",
+        currentGroupName: ACTIVE_GROUP_NAME,
         imageResult: imageResult.data,
       });
     }
