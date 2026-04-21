@@ -6,7 +6,7 @@ type Action =
   | "moveToActive"
   | "readAccess";
 
-const CONNECTOR_URL = "https://great-geese-listen.loca.lt";
+const CONNECTOR_URL = "https://pipes-richmond-european-miss.trycloudflare.com";
 
 type Body = {
   action: Action;
