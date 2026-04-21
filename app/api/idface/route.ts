@@ -6,7 +6,7 @@ type Action =
   | "moveToActive"
   | "readAccess";
 
-const CONNECTOR_URL = "https://short-geckos-worry.loca.lt";
+const CONNECTOR_URL = "https://great-geese-listen.loca.lt";
 
 type Body = {
   action: Action;
